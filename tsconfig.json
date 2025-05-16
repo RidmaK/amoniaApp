@@ -4,6 +4,7 @@
     "strict": true,
     "esModuleInterop": true,
     "jsx": "react-native",
+    "lib": ["ES2015", "DOM"],
     "paths": {
       "@/*": [
         "./*"

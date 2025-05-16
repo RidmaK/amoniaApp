@@ -9,7 +9,7 @@ import { useState } from 'react';
 import * as Linking from 'expo-linking';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useColorScheme() as 'light' | 'dark' | null;
   const [isCapturing, setIsCapturing] = useState(false);
 
   const handleCapture = async () => {
@@ -36,14 +36,18 @@ export default function TabLayout() {
         const imageUri = result.assets[0].uri;
         console.log('Image captured:', imageUri);
         
-        // Navigate to analysis with the captured image
-        router.push({
-          pathname: '/(tabs)/analysis',
-          params: { 
-            imageUri,
-            timestamp: new Date().getTime()
-          }
-        });
+        // Add a small delay to ensure the image is properly loaded
+        setTimeout(() => {
+          // Navigate to analysis with the captured image
+          router.push({
+            pathname: '/(tabs)/analysis',
+            params: { 
+              imageUri,
+              timestamp: new Date().getTime(),
+              isNewCapture: 'true'
+            }
+          });
+        }, 500);
       }
     } catch (error) {
       console.error('Error capturing image:', error);

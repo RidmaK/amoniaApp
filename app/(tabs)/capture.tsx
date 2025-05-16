@@ -19,7 +19,7 @@ import {
 import { Colors } from '../../constants/Colors';
 
 export default function CaptureScreen() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useColorScheme() as 'light' | 'dark' | null;
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
   const isTablet = width >= 768;
@@ -59,13 +59,18 @@ export default function CaptureScreen() {
         const imageUri = result.assets[0].uri;
         console.log('Image captured:', imageUri);
         setPreviewUri(imageUri);
-        router.push({
-          pathname: '/(tabs)/analysis',
-          params: { 
-            imageUri,
-            timestamp: new Date().getTime()
-          },
-        });
+        
+        // Add a small delay to ensure the image is properly loaded
+        setTimeout(() => {
+          router.push({
+            pathname: '/(tabs)/analysis',
+            params: { 
+              imageUri,
+              timestamp: new Date().getTime(),
+              isNewCapture: 'true'
+            },
+          });
+        }, 500);
       }
     } catch (error) {
       console.error('Error capturing image:', error);
@@ -94,13 +99,18 @@ export default function CaptureScreen() {
         const imageUri = result.assets[0].uri;
         console.log('Image selected from gallery:', imageUri);
         setPreviewUri(imageUri);
-        router.push({
-          pathname: '/(tabs)/analysis',
-          params: { 
-            imageUri,
-            timestamp: new Date().getTime()
-          },
-        });
+        
+        // Add a small delay to ensure the image is properly loaded
+        setTimeout(() => {
+          router.push({
+            pathname: '/(tabs)/analysis',
+            params: { 
+              imageUri,
+              timestamp: new Date().getTime(),
+              isNewCapture: 'true'
+            },
+          });
+        }, 500);
       }
     } catch (error) {
       console.error('Error picking image:', error);

@@ -129,7 +129,11 @@ const defaultResult: TestResult = {
 
 export default function AnalysisScreen() {
   const colorScheme = useColorScheme();
-  const { imageUri: initialImageUri, timestamp } = useLocalSearchParams<{ imageUri: string; timestamp: string }>();
+  const { imageUri: initialImageUri, timestamp, isNewCapture } = useLocalSearchParams<{ 
+    imageUri: string; 
+    timestamp: string;
+    isNewCapture?: string;
+  }>();
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(true);
   const [result, setResult] = useState<TestResult>(defaultResult);
@@ -192,19 +196,25 @@ export default function AnalysisScreen() {
     if (initialImageUri) {
       console.log('New image received:', initialImageUri);
       setImageUri(initialImageUri);
+      
+      // If this is a new capture, reset the result state
+      if (isNewCapture === 'true') {
+        setResult(defaultResult);
+        setIsAnalyzing(true);
+      }
     }
-  }, [initialImageUri]);
+  }, [initialImageUri, isNewCapture]);
 
   // Handle analysis when imageUri changes
   useEffect(() => {
     if (imageUri) {
       console.log('Image URI changed, starting analysis...');
-      // Reset state and start new analysis
-      setResult(defaultResult);
-      setIsAnalyzing(true);
-      analyzeImage();
+      // Only start new analysis if this is a new capture
+      if (isNewCapture === 'true') {
+        analyzeImage();
+      }
     }
-  }, [imageUri, timestamp]);
+  }, [imageUri, timestamp, isNewCapture]);
 
   const pickImage = async () => {
     try {
@@ -337,6 +347,39 @@ export default function AnalysisScreen() {
       console.log('Analysis result:', data);
 
       if (data.ammonia_concentration !== undefined) {
+        // Check color values
+        const color = data.color?.rgb || { r: 0, g: 0, b: 0 };
+        const isTooDark = color.r < 50 && color.g < 50 && color.b < 50;
+        const isTooLight = color.r > 200 && color.g > 200 && color.b > 200;
+
+        if (isTooDark) {
+          Alert.alert(
+            'Sample Too Concentrated',
+            'The sample appears too dark. Please dilute the sample and try again.',
+            [
+              {
+                text: 'OK',
+                onPress: () => router.back()
+              }
+            ]
+          );
+          return;
+        }
+
+        if (isTooLight) {
+          Alert.alert(
+            'Sample Too Dilute',
+            'The sample appears too light. Please increase the concentration and try again.',
+            [
+              {
+                text: 'OK',
+                onPress: () => router.back()
+              }
+            ]
+          );
+          return;
+        }
+
         setResult(prevResult => ({
           ...prevResult,
           concentration: data.ammonia_concentration,
