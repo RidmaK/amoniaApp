@@ -40,6 +40,51 @@ export default function CaptureScreen() {
     return baseSpacing;
   };
 
+  const validateColor = async (imageUri: string) => {
+    try {
+      let formData;
+      
+      if (Platform.OS === 'web') {
+        const imageResponse = await fetch(imageUri);
+        const blob = await imageResponse.blob();
+        formData = new FormData();
+        const file = new File([blob], 'image.jpg', { type: 'image/jpeg' });
+        formData.append('file', file);
+      } else {
+        formData = new FormData();
+        if (Platform.OS === 'android') {
+          const imageUriWithPrefix = imageUri.startsWith('file://') ? imageUri : `file://${imageUri}`;
+          formData.append('file', {
+            uri: imageUriWithPrefix,
+            type: 'image/jpeg',
+            name: 'image.jpg',
+          } as any);
+        } else {
+          formData.append('file', {
+            uri: imageUri,
+            type: 'image/jpeg',
+            name: 'image.jpg',
+          } as any);
+        }
+      }
+
+      const response = await fetch('https://test3.xessglobal.net/validate-color', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Accept': 'application/json',
+          ...(Platform.OS === 'web' ? {} : { 'Content-Type': 'multipart/form-data' }),
+        },
+      });
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error validating color:', error);
+      throw error;
+    }
+  };
+
   const handleCapture = async () => {
     try {
       setIsLoading(true);
@@ -59,18 +104,50 @@ export default function CaptureScreen() {
         const imageUri = result.assets[0].uri;
         console.log('Image captured:', imageUri);
         setPreviewUri(imageUri);
+
+        // Validate color before proceeding
+        const validationResult = await validateColor(imageUri);
         
-        // Add a small delay to ensure the image is properly loaded
-        setTimeout(() => {
-          router.push({
-            pathname: '/(tabs)/analysis',
-            params: { 
-              imageUri,
-              timestamp: new Date().getTime(),
-              isNewCapture: 'true'
-            },
-          });
-        }, 500);
+        if (validationResult.status === 'error') {
+          Alert.alert(
+            validationResult.message,
+            validationResult.action,
+            [
+              {
+                text: 'Cancel',
+                style: 'cancel',
+                onPress: () => setPreviewUri(null)
+              },
+              {
+                text: 'Proceed Anyway',
+                onPress: () => {
+                  setTimeout(() => {
+                    router.push({
+                      pathname: '/(tabs)/analysis',
+                      params: { 
+                        imageUri,
+                        timestamp: new Date().getTime(),
+                        isNewCapture: 'true'
+                      },
+                    });
+                  }, 500);
+                }
+              }
+            ]
+          );
+        } else {
+          // Color is valid, proceed to analysis
+          setTimeout(() => {
+            router.push({
+              pathname: '/(tabs)/analysis',
+              params: { 
+                imageUri,
+                timestamp: new Date().getTime(),
+                isNewCapture: 'true'
+              },
+            });
+          }, 500);
+        }
       }
     } catch (error) {
       console.error('Error capturing image:', error);
@@ -99,18 +176,50 @@ export default function CaptureScreen() {
         const imageUri = result.assets[0].uri;
         console.log('Image selected from gallery:', imageUri);
         setPreviewUri(imageUri);
+
+        // Validate color before proceeding
+        const validationResult = await validateColor(imageUri);
         
-        // Add a small delay to ensure the image is properly loaded
-        setTimeout(() => {
-          router.push({
-            pathname: '/(tabs)/analysis',
-            params: { 
-              imageUri,
-              timestamp: new Date().getTime(),
-              isNewCapture: 'true'
-            },
-          });
-        }, 500);
+        if (validationResult.status === 'error') {
+          Alert.alert(
+            validationResult.message,
+            validationResult.action,
+            [
+              {
+                text: 'Cancel',
+                style: 'cancel',
+                onPress: () => setPreviewUri(null)
+              },
+              {
+                text: 'Proceed Anyway',
+                onPress: () => {
+                  setTimeout(() => {
+                    router.push({
+                      pathname: '/(tabs)/analysis',
+                      params: { 
+                        imageUri,
+                        timestamp: new Date().getTime(),
+                        isNewCapture: 'true'
+                      },
+                    });
+                  }, 500);
+                }
+              }
+            ]
+          );
+        } else {
+          // Color is valid, proceed to analysis
+          setTimeout(() => {
+            router.push({
+              pathname: '/(tabs)/analysis',
+              params: { 
+                imageUri,
+                timestamp: new Date().getTime(),
+                isNewCapture: 'true'
+              },
+            });
+          }, 500);
+        }
       }
     } catch (error) {
       console.error('Error picking image:', error);
