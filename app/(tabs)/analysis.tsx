@@ -9,6 +9,7 @@ import {
   Alert,
   Dimensions,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from 'react-native';
@@ -347,39 +348,6 @@ export default function AnalysisScreen() {
       console.log('Analysis result:', data);
 
       if (data.ammonia_concentration !== undefined) {
-        // Check color values
-        const color = data.color?.rgb || { r: 0, g: 0, b: 0 };
-        const isTooDark = color.r < 50 && color.g < 50 && color.b < 50;
-        const isTooLight = color.r > 200 && color.g > 200 && color.b > 200;
-
-        if (isTooDark) {
-          Alert.alert(
-            'Sample Too Concentrated',
-            'The sample appears too dark. Please dilute the sample and try again.',
-            [
-              {
-                text: 'OK',
-                onPress: () => router.back()
-              }
-            ]
-          );
-          return;
-        }
-
-        if (isTooLight) {
-          Alert.alert(
-            'Sample Too Dilute',
-            'The sample appears too light. Please increase the concentration and try again.',
-            [
-              {
-                text: 'OK',
-                onPress: () => router.back()
-              }
-            ]
-          );
-          return;
-        }
-
         setResult(prevResult => ({
           ...prevResult,
           concentration: data.ammonia_concentration,
@@ -711,10 +679,36 @@ export default function AnalysisScreen() {
           <View style={styles.section}>
             <View style={[styles.card, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
               <View style={styles.analyzingContainer}>
-                <Ionicons name="analytics" size={48} color={Colors[colorScheme ?? 'light'].tint} />
+                <View style={styles.analyzingIconContainer}>
+                  <Ionicons name="analytics" size={48} color={Colors[colorScheme ?? 'light'].tint} />
+                  <View style={[styles.analyzingPulse, { borderColor: Colors[colorScheme ?? 'light'].tint }]} />
+                </View>
                 <Text style={[styles.analyzingText, { color: Colors[colorScheme ?? 'light'].text }]}>
                   Analyzing Test Sample...
                 </Text>
+                <Text style={[styles.analyzingSubtext, { color: Colors[colorScheme ?? 'light'].text }]}>
+                  Processing image and calculating concentration
+                </Text>
+                <View style={styles.analyzingSteps}>
+                  <View style={styles.analyzingStep}>
+                    <Ionicons name="checkmark-circle" size={20} color={Colors[colorScheme ?? 'light'].tint} />
+                    <Text style={[styles.analyzingStepText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                      Image captured
+                    </Text>
+                  </View>
+                  <View style={styles.analyzingStep}>
+                    <Ionicons name="checkmark-circle" size={20} color={Colors[colorScheme ?? 'light'].tint} />
+                    <Text style={[styles.analyzingStepText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                      Color validated
+                    </Text>
+                  </View>
+                  <View style={styles.analyzingStep}>
+                    <ActivityIndicator size="small" color={Colors[colorScheme ?? 'light'].tint} />
+                    <Text style={[styles.analyzingStepText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                      Calculating concentration
+                    </Text>
+                  </View>
+                </View>
               </View>
             </View>
           </View>
@@ -912,9 +906,49 @@ const styles = StyleSheet.create({
     padding: 24,
     gap: 16,
   },
+  analyzingIconContainer: {
+    position: 'relative',
+    width: 80,
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  analyzingPulse: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    borderRadius: 40,
+    borderWidth: 2,
+    opacity: 0.5,
+    transform: [{ scale: 1.2 }],
+  },
   analyzingText: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
+    textAlign: 'center',
+  },
+  analyzingSubtext: {
+    fontSize: 14,
+    textAlign: 'center',
+    opacity: 0.7,
+  },
+  analyzingSteps: {
+    width: '100%',
+    marginTop: 16,
+    gap: 12,
+  },
+  analyzingStep: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
+    borderRadius: 8,
+  },
+  analyzingStepText: {
+    fontSize: 14,
+    flex: 1,
   },
   resultItem: {
     flexDirection: 'row',

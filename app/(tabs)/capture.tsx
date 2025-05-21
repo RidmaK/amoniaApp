@@ -17,6 +17,7 @@ import {
   View
 } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import { BlurView } from 'expo-blur';
 
 export default function CaptureScreen() {
   const colorScheme = useColorScheme() as 'light' | 'dark' | null;
@@ -25,8 +26,14 @@ export default function CaptureScreen() {
   const isTablet = width >= 768;
   const isSmallScreen = width < 375;
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
   const [previewUri, setPreviewUri] = useState<string | null>(null);
+  const [showCustomAlert, setShowCustomAlert] = useState(false);
+  const [alertData, setAlertData] = useState<{
+    title: string;
+    message: string;
+    onProceed: () => void;
+  } | null>(null);
 
   const getResponsiveFontSize = (baseSize: number) => {
     if (isSmallScreen) return baseSize - 2;
@@ -38,6 +45,42 @@ export default function CaptureScreen() {
     if (isSmallScreen) return baseSpacing - 4;
     if (isTablet) return baseSpacing + 4;
     return baseSpacing;
+  };
+
+  const CustomAlert = () => {
+    if (!showCustomAlert || !alertData) return null;
+
+    return (
+      <View style={styles.alertOverlay}>
+        <BlurView intensity={20} style={styles.alertBlur}>
+          <View style={[styles.alertContainer, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
+            <View style={styles.alertIconContainer}>
+              <Ionicons 
+                name={alertData.title.includes('concentrated') ? 'warning' : 'information-circle'} 
+                size={48} 
+                color={Colors[colorScheme ?? 'light'].tint} 
+              />
+            </View>
+            <Text style={[styles.alertTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
+              {alertData.title}
+            </Text>
+            <Text style={[styles.alertMessage, { color: Colors[colorScheme ?? 'light'].text }]}>
+              {alertData.message}
+            </Text>
+            <TouchableOpacity
+              style={[styles.alertButton, styles.alertButtonCancel]}
+              onPress={() => {
+                setShowCustomAlert(false);
+              }}
+            >
+              <Text style={[styles.alertButtonText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                OK
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </BlurView>
+      </View>
+    );
   };
 
   const validateColor = async (imageUri: string) => {
@@ -86,80 +129,104 @@ export default function CaptureScreen() {
   };
 
   const handleCapture = async () => {
+    if (isCapturing) return;
+    
     try {
-      setIsLoading(true);
+      setIsCapturing(true);
+      
+      // Request camera permissions
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
         return;
       }
 
+      // Add a small delay to ensure camera is ready
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Launch camera with optimized options
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 1,
+        quality: 0.8, // Slightly reduced quality for better performance
+        exif: false, // Disable EXIF data to reduce memory usage
+        base64: false, // Disable base64 to reduce memory usage
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
       });
+
+      // Add a small delay after camera closes
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       if (!result.canceled && result.assets[0]) {
         const imageUri = result.assets[0].uri;
         console.log('Image captured:', imageUri);
         setPreviewUri(imageUri);
-
-        // Validate color before proceeding
-        const validationResult = await validateColor(imageUri);
         
-        if (validationResult.status === 'error') {
-          Alert.alert(
-            validationResult.message,
-            validationResult.action,
-            [
-              {
-                text: 'Cancel',
-                style: 'cancel',
-                onPress: () => setPreviewUri(null)
-              },
-              {
-                text: 'Proceed Anyway',
-                onPress: () => {
-                  setTimeout(() => {
-                    router.push({
-                      pathname: '/(tabs)/analysis',
-                      params: { 
-                        imageUri,
-                        timestamp: new Date().getTime(),
-                        isNewCapture: 'true'
-                      },
-                    });
-                  }, 500);
-                }
+        // Add a small delay before validation
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        try {
+          // Validate color before proceeding
+          const validationResult = await validateColor(imageUri);
+          
+          if (validationResult.status === 'error') {
+            setAlertData({
+              title: validationResult.message,
+              message: validationResult.action,
+              onProceed: () => {
+                setTimeout(() => {
+                  router.push({
+                    pathname: '/(tabs)/analysis',
+                    params: { 
+                      imageUri,
+                      timestamp: new Date().getTime(),
+                      isNewCapture: 'true'
+                    }
+                  });
+                }, 500);
               }
-            ]
-          );
-        } else {
-          // Color is valid, proceed to analysis
-          setTimeout(() => {
-            router.push({
-              pathname: '/(tabs)/analysis',
-              params: { 
-                imageUri,
-                timestamp: new Date().getTime(),
-                isNewCapture: 'true'
-              },
             });
-          }, 500);
+            setShowCustomAlert(true);
+          } else {
+            // Color is valid, proceed to analysis
+            setTimeout(() => {
+              router.push({
+                pathname: '/(tabs)/analysis',
+                params: { 
+                  imageUri,
+                  timestamp: new Date().getTime(),
+                  isNewCapture: 'true'
+                }
+              });
+            }, 500);
+          }
+        } catch (validationError) {
+          console.error('Validation error:', validationError);
+          Alert.alert(
+            'Error',
+            'Failed to validate the image. Please try again.',
+            [{ text: 'OK' }]
+          );
         }
       }
     } catch (error) {
       console.error('Error capturing image:', error);
-      Alert.alert('Error', 'Failed to capture image. Please try again.');
+      Alert.alert(
+        'Error',
+        'Failed to capture image. Please try again.',
+        [{ text: 'OK' }]
+      );
     } finally {
-      setIsLoading(false);
+      // Add a small delay before resetting the capturing state
+      setTimeout(() => {
+        setIsCapturing(false);
+      }, 300);
     }
   };
 
   const handleGalleryPick = async () => {
     try {
-      setIsLoading(true);
+      setIsCapturing(true);
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission Denied', 'Photo library permission is required to select images.');
@@ -181,32 +248,23 @@ export default function CaptureScreen() {
         const validationResult = await validateColor(imageUri);
         
         if (validationResult.status === 'error') {
-          Alert.alert(
-            validationResult.message,
-            validationResult.action,
-            [
-              {
-                text: 'Cancel',
-                style: 'cancel',
-                onPress: () => setPreviewUri(null)
-              },
-              {
-                text: 'Proceed Anyway',
-                onPress: () => {
-                  setTimeout(() => {
-                    router.push({
-                      pathname: '/(tabs)/analysis',
-                      params: { 
-                        imageUri,
-                        timestamp: new Date().getTime(),
-                        isNewCapture: 'true'
-                      },
-                    });
-                  }, 500);
-                }
-              }
-            ]
-          );
+          setAlertData({
+            title: validationResult.message,
+            message: validationResult.action,
+            onProceed: () => {
+              setTimeout(() => {
+                router.push({
+                  pathname: '/(tabs)/analysis',
+                  params: { 
+                    imageUri,
+                    timestamp: new Date().getTime(),
+                    isNewCapture: 'true'
+                  },
+                });
+              }, 500);
+            }
+          });
+          setShowCustomAlert(true);
         } else {
           // Color is valid, proceed to analysis
           setTimeout(() => {
@@ -225,7 +283,7 @@ export default function CaptureScreen() {
       console.error('Error picking image:', error);
       Alert.alert('Error', 'Failed to pick image from gallery. Please try again.');
     } finally {
-      setIsLoading(false);
+      setIsCapturing(false);
     }
   };
 
@@ -258,93 +316,95 @@ export default function CaptureScreen() {
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={true}
+        showsVerticalScrollIndicator={false}
         bounces={true}
       >
-        <View style={styles.previewContainer}>
-          {previewUri ? (
-            <Image source={{ uri: previewUri }} style={styles.previewImage} />
-          ) : (
-            <View style={styles.previewPlaceholder}>
-              <Ionicons name="camera" size={48} color={Colors[colorScheme ?? 'light'].text} />
-              <Text style={[styles.previewText, { color: Colors[colorScheme ?? 'light'].text }]}>
-                No image selected
-              </Text>
+        <View style={styles.mainContent}>
+          <View style={styles.previewSection}>
+            <View style={styles.previewContainer}>
+              {previewUri ? (
+                <Image source={{ uri: previewUri }} style={styles.previewImage} />
+              ) : (
+                <View style={styles.previewPlaceholder}>
+                  <View style={styles.previewIconContainer}>
+                    <Ionicons name="camera" size={48} color={Colors[colorScheme ?? 'light'].tint} />
+                  </View>
+                  <Text style={[styles.previewText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                    No image selected
+                  </Text>
+                </View>
+              )}
             </View>
-          )}
-        </View>
+          </View>
 
-        <View style={styles.buttonsContainer}>
-          <TouchableOpacity
-            style={[styles.button, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
-            onPress={handleCapture}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <>
-                <Ionicons name="camera" size={24} color="white" />
-                <Text style={styles.buttonText}>Take Photo</Text>
-              </>
-            )}
-          </TouchableOpacity>
+          <View style={styles.actionSection}>
+            <TouchableOpacity
+              style={[styles.captureButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
+              onPress={handleCapture}
+              disabled={isCapturing}
+            >
+              {isCapturing ? (
+                <ActivityIndicator size="large" color="white" />
+              ) : (
+                <>
+                  <View style={styles.buttonIconContainer}>
+                    <Ionicons name="camera" size={28} color="white" />
+                  </View>
+                  <Text style={styles.buttonText}>Take Photo</Text>
+                </>
+              )}
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.button, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}
-            onPress={handleGalleryPick}
-          >
-            <Ionicons name="images" size={24} color={Colors[colorScheme ?? 'light'].tint} />
-            <Text style={[styles.buttonText, { color: Colors[colorScheme ?? 'light'].text }]}>
-              Choose from Gallery
-            </Text>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity
+              style={[styles.galleryButton, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}
+              onPress={handleGalleryPick}
+            >
+              <View style={styles.buttonIconContainer}>
+                <Ionicons name="images" size={28} color={Colors[colorScheme ?? 'light'].tint} />
+              </View>
+              <Text style={[styles.buttonText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                Choose from Gallery
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-        <View style={[styles.tipsContainer, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
-          <Text style={[styles.tipsTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
-            Tips for Best Results
-          </Text>
-          <View style={styles.tipsList}>
-            <View style={styles.tipItem}>
-              <Ionicons name="sunny" size={20} color={Colors[colorScheme ?? 'light'].tint} />
-              <Text style={[styles.tipText, { color: Colors[colorScheme ?? 'light'].text }]}>
-                Ensure good lighting conditions
+          <View style={[styles.tipsSection, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
+            <View style={styles.tipsHeader}>
+              <Ionicons name="bulb" size={24} color={Colors[colorScheme ?? 'light'].tint} />
+              <Text style={[styles.tipsTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
+                Tips for Best Results
               </Text>
             </View>
-            <View style={styles.tipItem}>
-              <Ionicons name="crop" size={20} color={Colors[colorScheme ?? 'light'].tint} />
-              <Text style={[styles.tipText, { color: Colors[colorScheme ?? 'light'].text }]}>
-                Crop image to focus only on the color area
-              </Text>
-            </View>
-            <View style={styles.tipItem}>
-              <Ionicons name="color-palette" size={20} color={Colors[colorScheme ?? 'light'].tint} />
-              <Text style={[styles.tipText, { color: Colors[colorScheme ?? 'light'].text }]}>
-                Ensure color area fills most of the frame
-              </Text>
-            </View>
-            <View style={styles.tipItem}>
-              <Ionicons name="grid" size={20} color={Colors[colorScheme ?? 'light'].tint} />
-              <Text style={[styles.tipText, { color: Colors[colorScheme ?? 'light'].text }]}>
-                Center the test sample in frame
-              </Text>
-            </View>
-            <View style={styles.tipItem}>
-              <Ionicons name="hand-left" size={20} color={Colors[colorScheme ?? 'light'].tint} />
-              <Text style={[styles.tipText, { color: Colors[colorScheme ?? 'light'].text }]}>
-                Keep the camera steady
-              </Text>
-            </View>
-            <View style={styles.tipItem}>
-              <Ionicons name="contrast" size={20} color={Colors[colorScheme ?? 'light'].tint} />
-              <Text style={[styles.tipText, { color: Colors[colorScheme ?? 'light'].text }]}>
-                Avoid shadows and reflections
-              </Text>
+            <View style={styles.tipsGrid}>
+              <View style={styles.tipCard}>
+                <Ionicons name="sunny" size={24} color={Colors[colorScheme ?? 'light'].tint} />
+                <Text style={[styles.tipText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                  Good lighting conditions
+                </Text>
+              </View>
+              <View style={styles.tipCard}>
+                <Ionicons name="crop" size={24} color={Colors[colorScheme ?? 'light'].tint} />
+                <Text style={[styles.tipText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                  Focus on color area
+                </Text>
+              </View>
+              <View style={styles.tipCard}>
+                <Ionicons name="color-palette" size={24} color={Colors[colorScheme ?? 'light'].tint} />
+                <Text style={[styles.tipText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                  Fill frame with color
+                </Text>
+              </View>
+              <View style={styles.tipCard}>
+                <Ionicons name="grid" size={24} color={Colors[colorScheme ?? 'light'].tint} />
+                <Text style={[styles.tipText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                  Center the sample
+                </Text>
+              </View>
             </View>
           </View>
         </View>
       </ScrollView>
+      <CustomAlert />
     </View>
   );
 }
@@ -410,16 +470,34 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    flexGrow: 1,
+  },
+  mainContent: {
+    flex: 1,
     padding: 20,
-    gap: 20,
+    gap: 24,
+  },
+  previewSection: {
+    marginTop: -40,
+    zIndex: 1,
   },
   previewContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-    borderRadius: 16,
+    height: 300,
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
+    borderRadius: 24,
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(59, 130, 246, 0.1)',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
   },
   previewImage: {
     width: '100%',
@@ -428,50 +506,187 @@ const styles = StyleSheet.create({
   },
   previewPlaceholder: {
     alignItems: 'center',
-    gap: 12,
+    gap: 16,
+    padding: 32,
+  },
+  previewIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   previewText: {
     fontSize: 16,
     textAlign: 'center',
+    opacity: 0.7,
   },
-  buttonsContainer: {
-    gap: 12,
+  actionSection: {
+    gap: 16,
   },
-  button: {
+  captureButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 15,
-    borderRadius: 12,
-    gap: 10,
+    padding: 20,
+    borderRadius: 20,
+    gap: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  galleryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    borderRadius: 20,
+    gap: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  buttonIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   buttonText: {
-    color: 'white',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
+    letterSpacing: 0.3,
   },
-  tipsContainer: {
+  tipsSection: {
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  tipsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 8,
+    marginBottom: 20,
   },
   tipsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
-  tipsList: {
-    gap: 12,
-  },
-  tipItem: {
+  tipsGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  tipCard: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: 'rgba(59, 130, 246, 0.05)',
+    borderRadius: 16,
+    padding: 16,
     alignItems: 'center',
     gap: 12,
   },
   tipText: {
-    fontSize: 14,
-    flex: 1,
+    fontSize: 15,
+    textAlign: 'center',
     lineHeight: 20,
+    letterSpacing: 0.2,
+  },
+  alertOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  alertBlur: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  alertContainer: {
+    width: '85%',
+    maxWidth: 400,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  alertIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  alertTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  alertMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  alertButton: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  alertButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  alertButtonCancel: {
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  alertButtonProceed: {
+    backgroundColor: '#3B82F6',
+  },
+  alertButtonTextProceed: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
   },
 });
