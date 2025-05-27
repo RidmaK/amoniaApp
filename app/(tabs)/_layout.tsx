@@ -3,10 +3,10 @@ import { Tabs } from 'expo-router';
 import { useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
-import { View, TouchableOpacity, StyleSheet, Platform, Alert, ActivityIndicator, Text } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Platform, Alert, ActivityIndicator, Text, Modal, Animated } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import * as Linking from 'expo-linking';
 import { BlurView } from 'expo-blur';
 
@@ -14,11 +14,86 @@ export default function TabLayout() {
   const colorScheme = useColorScheme() as 'light' | 'dark' | null;
   const [isCapturing, setIsCapturing] = useState(false);
   const [showCustomAlert, setShowCustomAlert] = useState(false);
+  const [showDrawer, setShowDrawer] = useState(false);
+  const slideAnim = useRef(new Animated.Value(0)).current;
   const [alertData, setAlertData] = useState<{
     title: string;
     message: string;
     onProceed: () => void;
   } | null>(null);
+
+  const toggleDrawer = () => {
+    const toValue = showDrawer ? 0 : 1;
+    Animated.spring(slideAnim, {
+      toValue,
+      useNativeDriver: true,
+      tension: 65,
+      friction: 11
+    }).start();
+    setShowDrawer(!showDrawer);
+  };
+
+  const BottomDrawer = () => {
+    return (
+      <Modal
+        visible={showDrawer}
+        transparent
+        animationType="none"
+        onRequestClose={toggleDrawer}
+      >
+        <TouchableOpacity 
+          style={styles.drawerOverlay} 
+          activeOpacity={1} 
+          onPress={toggleDrawer}
+        >
+          <Animated.View 
+            style={[
+              styles.drawer,
+              {
+                transform: [{
+                  translateY: slideAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [300, 0]
+                  })
+                }]
+              }
+            ]}
+          >
+            <View style={styles.drawerHandle} />
+            <View style={styles.drawerContent}>
+              <TouchableOpacity 
+                style={[styles.drawerButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
+                onPress={() => {
+                  toggleDrawer();
+                  handleCapture();
+                }}
+              >
+                <View style={styles.drawerButtonIcon}>
+                  <Ionicons name="camera" size={24} color="white" />
+                </View>
+                <Text style={styles.drawerButtonText}>Take Photo</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.drawerButton, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}
+                onPress={() => {
+                  toggleDrawer();
+                  handleGalleryPick();
+                }}
+              >
+                <View style={[styles.drawerButtonIcon, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+                  <Ionicons name="images" size={24} color={Colors[colorScheme ?? 'light'].tint} />
+                </View>
+                <Text style={[styles.drawerButtonText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                  Choose from Gallery
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </TouchableOpacity>
+      </Modal>
+    );
+  };
 
   const CustomAlert = () => {
     if (!showCustomAlert || !alertData) return null;
@@ -196,6 +271,68 @@ export default function TabLayout() {
     }
   };
 
+  const handleGalleryPick = async () => {
+    try {
+      setIsCapturing(true);
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Photo library permission is required to select images.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const imageUri = result.assets[0].uri;
+        console.log('Image selected from gallery:', imageUri);
+
+        // Validate color before proceeding
+        const validationResult = await validateColor(imageUri);
+        
+        if (validationResult.status === 'error') {
+          setAlertData({
+            title: validationResult.message,
+            message: validationResult.action,
+            onProceed: () => {
+              setTimeout(() => {
+                router.push({
+                  pathname: '/(tabs)/analysis',
+                  params: { 
+                    imageUri,
+                    timestamp: new Date().getTime(),
+                    isNewCapture: 'true'
+                  },
+                });
+              }, 500);
+            }
+          });
+          setShowCustomAlert(true);
+        } else {
+          // Color is valid, proceed to analysis
+          setTimeout(() => {
+            router.push({
+              pathname: '/(tabs)/analysis',
+              params: { 
+                imageUri,
+                timestamp: new Date().getTime(),
+                isNewCapture: 'true'
+              },
+            });
+          }, 500);
+        }
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image from gallery. Please try again.');
+    } finally {
+      setIsCapturing(false);
+    }
+  };
+
   return (
     <>
       <Tabs
@@ -238,7 +375,7 @@ export default function TabLayout() {
               <View style={styles.captureButtonContainer}>
                 <TouchableOpacity
                   style={[styles.captureButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
-                  onPress={handleCapture}
+                  onPress={toggleDrawer}
                   disabled={isCapturing}
                 >
                   {isCapturing ? (
@@ -267,6 +404,7 @@ export default function TabLayout() {
         />
       </Tabs>
       <CustomAlert />
+      <BottomDrawer />
     </>
   );
 }
@@ -369,6 +507,58 @@ const styles = StyleSheet.create({
   },
   alertButtonTextProceed: {
     fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+  },
+  drawerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  drawer: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  drawerHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  drawerContent: {
+    paddingHorizontal: 20,
+    gap: 16,
+  },
+  drawerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+    gap: 16,
+  },
+  drawerButtonIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  drawerButtonText: {
+    fontSize: 18,
     fontWeight: '600',
     color: 'white',
   },

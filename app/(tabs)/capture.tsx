@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -14,7 +14,9 @@ import {
   TouchableOpacity,
   useColorScheme,
   useWindowDimensions,
-  View
+  View,
+  Animated,
+  Modal
 } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { BlurView } from 'expo-blur';
@@ -29,11 +31,86 @@ export default function CaptureScreen() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [showCustomAlert, setShowCustomAlert] = useState(false);
+  const [showDrawer, setShowDrawer] = useState(false);
+  const slideAnim = useRef(new Animated.Value(0)).current;
   const [alertData, setAlertData] = useState<{
     title: string;
     message: string;
     onProceed: () => void;
   } | null>(null);
+
+  const toggleDrawer = () => {
+    const toValue = showDrawer ? 0 : 1;
+    Animated.spring(slideAnim, {
+      toValue,
+      useNativeDriver: true,
+      tension: 65,
+      friction: 11
+    }).start();
+    setShowDrawer(!showDrawer);
+  };
+
+  const BottomDrawer = () => {
+    return (
+      <Modal
+        visible={showDrawer}
+        transparent
+        animationType="none"
+        onRequestClose={toggleDrawer}
+      >
+        <TouchableOpacity 
+          style={styles.drawerOverlay} 
+          activeOpacity={1} 
+          onPress={toggleDrawer}
+        >
+          <Animated.View 
+            style={[
+              styles.drawer,
+              {
+                transform: [{
+                  translateY: slideAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [300, 0]
+                  })
+                }]
+              }
+            ]}
+          >
+            <View style={styles.drawerHandle} />
+            <View style={styles.drawerContent}>
+              <TouchableOpacity 
+                style={[styles.drawerButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
+                onPress={() => {
+                  toggleDrawer();
+                  handleCapture();
+                }}
+              >
+                <View style={styles.drawerButtonIcon}>
+                  <Ionicons name="camera" size={24} color="white" />
+                </View>
+                <Text style={styles.drawerButtonText}>Take Photo</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.drawerButton, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}
+                onPress={() => {
+                  toggleDrawer();
+                  handleGalleryPick();
+                }}
+              >
+                <View style={[styles.drawerButtonIcon, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+                  <Ionicons name="images" size={24} color={Colors[colorScheme ?? 'light'].tint} />
+                </View>
+                <Text style={[styles.drawerButtonText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                  Choose from Gallery
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </TouchableOpacity>
+      </Modal>
+    );
+  };
 
   const getResponsiveFontSize = (baseSize: number) => {
     if (isSmallScreen) return baseSize - 2;
@@ -304,13 +381,6 @@ export default function CaptureScreen() {
           </View>
           <Text style={styles.headerSubtitle}>Take a photo of your ammonia test sample</Text>
         </View>
-        <View style={styles.headerDecoration}>
-          <View style={styles.moleculeDot} />
-          <View style={styles.moleculeDot} />
-          <View style={styles.moleculeDot} />
-          <View style={styles.moleculeLine} />
-          <View style={styles.moleculeLine} />
-        </View>
       </LinearGradient>
 
       <ScrollView 
@@ -340,7 +410,7 @@ export default function CaptureScreen() {
           <View style={styles.actionSection}>
             <TouchableOpacity
               style={[styles.captureButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
-              onPress={handleCapture}
+              onPress={toggleDrawer}
               disabled={isCapturing}
             >
               {isCapturing ? (
@@ -350,21 +420,9 @@ export default function CaptureScreen() {
                   <View style={styles.buttonIconContainer}>
                     <Ionicons name="camera" size={28} color="white" />
                   </View>
-                  <Text style={styles.buttonText}>Take Photo</Text>
+                  <Text style={styles.buttonText}>Capture</Text>
                 </>
               )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.galleryButton, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}
-              onPress={handleGalleryPick}
-            >
-              <View style={styles.buttonIconContainer}>
-                <Ionicons name="images" size={28} color={Colors[colorScheme ?? 'light'].tint} />
-              </View>
-              <Text style={[styles.buttonText, { color: Colors[colorScheme ?? 'light'].text }]}>
-                Choose from Gallery
-              </Text>
             </TouchableOpacity>
           </View>
 
@@ -405,6 +463,7 @@ export default function CaptureScreen() {
         </View>
       </ScrollView>
       <CustomAlert />
+      <BottomDrawer />
     </View>
   );
 }
@@ -444,27 +503,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.9)',
     marginLeft: 44,
-  },
-  headerDecoration: {
-    position: 'absolute',
-    right: 20,
-    top: 20,
-    width: 100,
-    height: 100,
-    opacity: 0.2,
-  },
-  moleculeDot: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'white',
-  },
-  moleculeLine: {
-    position: 'absolute',
-    height: 2,
-    backgroundColor: 'white',
-    transform: [{ rotate: '45deg' }],
   },
   scrollView: {
     flex: 1,
@@ -541,22 +579,6 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  galleryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-    borderRadius: 20,
-    gap: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
   buttonIconContainer: {
     width: 48,
     height: 48,
@@ -569,6 +591,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     letterSpacing: 0.3,
+    color: 'white',
   },
   tipsSection: {
     borderRadius: 24,
@@ -686,6 +709,58 @@ const styles = StyleSheet.create({
   },
   alertButtonTextProceed: {
     fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+  },
+  drawerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  drawer: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  drawerHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  drawerContent: {
+    paddingHorizontal: 20,
+    gap: 16,
+  },
+  drawerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+    gap: 16,
+  },
+  drawerButtonIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  drawerButtonText: {
+    fontSize: 18,
     fontWeight: '600',
     color: 'white',
   },
