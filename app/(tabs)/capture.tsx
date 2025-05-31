@@ -44,6 +44,15 @@ export default function CaptureScreen() {
     onProceed: () => void;
   } | null>(null);
 
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStep, setProcessingStep] = useState(0);
+  const processingSteps = [
+    'Enhancing image quality...',
+    'Adjusting contrast...',
+    'Applying scanner effect...',
+    'Optimizing result...'
+  ];
+
   useEffect(() => {
     if (openDrawerParam === 'true') {
       setShowDrawer(true);
@@ -230,28 +239,59 @@ export default function CaptureScreen() {
 
   const processImage = async (imageUri: string) => {
     try {
-      // First, enhance the image quality
+      setIsProcessing(true);
+      setProcessingStep(0);
+
+      // Step 1: Enhance image quality
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate processing time
       const enhancedImage = await ImageManipulator.manipulateAsync(
         imageUri,
         [
-          // Resize while maintaining aspect ratio
           { resize: { width: 1200 } },
-          // Auto-enhance the image
           { enhance: 1.2 },
-          // Increase contrast
+        ],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      
+      setProcessingStep(1);
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Step 2: Adjust contrast and brightness
+      const contrastedImage = await ImageManipulator.manipulateAsync(
+        enhancedImage.uri,
+        [
           { contrast: 1.2 },
-          // Adjust brightness
           { brightness: 1.1 },
-          // Sharpen the image
-          { sharpen: 1 }
         ],
         { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
       );
 
-      return enhancedImage.uri;
+      setProcessingStep(2);
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Step 3: Apply scanner-like effect
+      const scannedImage = await ImageManipulator.manipulateAsync(
+        contrastedImage.uri,
+        [
+          { sharpen: 1 },
+          // Add grayscale effect for scanner look
+          { saturate: -1 },
+          // Increase clarity
+          { contrast: 1.1 },
+        ],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+      );
+
+      setProcessingStep(3);
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      return scannedImage.uri;
     } catch (error) {
       console.error('Error processing image:', error);
       throw error;
+    } finally {
+      setIsProcessing(false);
+      setProcessingStep(0);
     }
   };
 
@@ -418,6 +458,68 @@ export default function CaptureScreen() {
     }, [])
   );
 
+  // Add ProcessingOverlay component
+  const ProcessingOverlay = () => {
+    if (!isProcessing) return null;
+
+    return (
+      <View style={styles.processingOverlay}>
+        <BlurView intensity={20} style={StyleSheet.absoluteFill} />
+        <View style={[styles.processingContainer, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
+          <View style={styles.processingIconContainer}>
+            <Ionicons name="scan" size={48} color={Colors[colorScheme ?? 'light'].tint} />
+            <View style={[styles.processingPulse, { borderColor: Colors[colorScheme ?? 'light'].tint }]} />
+          </View>
+          <Text style={[styles.processingTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
+            Processing Image
+          </Text>
+          <Text style={[styles.processingStep, { color: Colors[colorScheme ?? 'light'].text }]}>
+            {processingSteps[processingStep]}
+          </Text>
+          <View style={styles.progressContainer}>
+            <View 
+              style={[
+                styles.progressBar,
+                { 
+                  backgroundColor: Colors[colorScheme ?? 'light'].tint,
+                  width: `${((processingStep + 1) / processingSteps.length) * 100}%`
+                }
+              ]} 
+            />
+          </View>
+          <View style={styles.processingSteps}>
+            {processingSteps.map((step, index) => (
+              <View 
+                key={index}
+                style={[
+                  styles.processingStepIndicator,
+                  { opacity: index <= processingStep ? 1 : 0.3 }
+                ]}
+              >
+                <Ionicons 
+                  name={index <= processingStep ? "checkmark-circle" : "ellipse-outline"}
+                  size={20}
+                  color={Colors[colorScheme ?? 'light'].tint}
+                />
+                <Text 
+                  style={[
+                    styles.processingStepText,
+                    { 
+                      color: Colors[colorScheme ?? 'light'].text,
+                      opacity: index <= processingStep ? 1 : 0.5
+                    }
+                  ]}
+                >
+                  {step}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
       <LinearGradient
@@ -516,6 +618,7 @@ export default function CaptureScreen() {
           </View>
         </View>
       </ScrollView>
+      <ProcessingOverlay />
       <CustomAlert />
       <BottomDrawer />
     </View>
@@ -822,5 +925,89 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: 'white',
+  },
+  processingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+  },
+  processingContainer: {
+    width: '85%',
+    maxWidth: 400,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  processingIconContainer: {
+    position: 'relative',
+    width: 80,
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  processingPulse: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    borderRadius: 40,
+    borderWidth: 2,
+    opacity: 0.5,
+    transform: [{ scale: 1.2 }],
+  },
+  processingTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  processingStep: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 24,
+    opacity: 0.8,
+  },
+  progressContainer: {
+    width: '100%',
+    height: 4,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    borderRadius: 2,
+    marginBottom: 24,
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%',
+    borderRadius: 2,
+    transition: 'width 0.3s ease-in-out',
+  },
+  processingSteps: {
+    width: '100%',
+    gap: 12,
+  },
+  processingStepIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    borderRadius: 8,
+  },
+  processingStepText: {
+    fontSize: 14,
   },
 });

@@ -9,7 +9,8 @@ import {
   Alert,
   Platform,
   ActivityIndicator,
-  RefreshControl, // Import RefreshControl
+  RefreshControl,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from 'react-native';
@@ -17,6 +18,8 @@ import { Colors } from '../../constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
+
+type ColorScheme = 'light' | 'dark' | null;
 
 type HistoryItem = {
   color_hex: string;
@@ -37,17 +40,34 @@ type HistoryResponse = {
   history: HistoryItem[];
 };
 
+type ColorTheme = {
+  background: string;
+  card: string;
+  text: string;
+  tint: string;
+  tabIconDefault: string;
+  tabIconSelected: string;
+};
+
+type AppColors = {
+  light: ColorTheme;
+  dark: ColorTheme;
+};
+
 export default function HistoryScreen() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useColorScheme() as ColorScheme;
+  const colors = Colors as AppColors;
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [filteredHistory, setFilteredHistory] = useState<HistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false); // State for pull-to-refresh
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
   const [concentrationRange, setConcentrationRange] = useState<[number, number]>([0, 15]);
   const [activeTab, setActiveTab] = useState<'history' | 'dilution'>('history');
+  const [loadingOpacity] = useState(new Animated.Value(1));
+  const [loadingAnimation] = useState(new Animated.Value(0));
 
   useEffect(() => {
     loadHistory();
@@ -56,6 +76,10 @@ export default function HistoryScreen() {
   useEffect(() => {
     filterHistory();
   }, [searchQuery, dateFilter, concentrationRange, history]);
+
+  useEffect(() => {
+    startLoadingAnimation();
+  }, [isLoading]);
 
   const loadHistory = async () => {
     try {
@@ -79,7 +103,6 @@ export default function HistoryScreen() {
   };
 
   const onRefresh = async () => {
-    // Function to handle pull-to-refresh
     try {
       setIsRefreshing(true);
       await loadHistory();
@@ -91,7 +114,6 @@ export default function HistoryScreen() {
   const filterHistory = () => {
     let filtered = [...history];
 
-    // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(item => {
@@ -101,7 +123,6 @@ export default function HistoryScreen() {
       });
     }
 
-    // Apply date filter
     const now = new Date();
     switch (dateFilter) {
       case 'today':
@@ -127,13 +148,11 @@ export default function HistoryScreen() {
         break;
     }
 
-    // Apply concentration range filter
     filtered = filtered.filter(item =>
       item.concentration >= concentrationRange[0] &&
       item.concentration <= concentrationRange[1]
     );
 
-    // Sort by timestamp (newest first)
     filtered.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     setFilteredHistory(filtered);
@@ -156,7 +175,7 @@ export default function HistoryScreen() {
     return (
       <View
         key={`${item.timestamp}-${index}`}
-        style={[styles.testCard, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}
+        style={[styles.testCard, { backgroundColor: colors[colorScheme ?? 'light'].card }]}
       >
         <View style={styles.testHeader}>
           <Text style={styles.testName}>Test #{index + 1}</Text>
@@ -165,7 +184,7 @@ export default function HistoryScreen() {
 
         <View style={styles.testDetails}>
           <View style={styles.detailItem}>
-            <Ionicons name="flask" size={16} color={Colors[colorScheme ?? 'light'].tint} />
+            <Ionicons name="flask" size={16} color={colors[colorScheme ?? 'light'].tint} />
             <Text style={styles.detailText}>
               {item.concentration.toFixed(3)} mol/dm⁻³
             </Text>
@@ -198,8 +217,77 @@ export default function HistoryScreen() {
     );
   };
 
+  const startLoadingAnimation = () => {
+    if (isLoading) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(loadingAnimation, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(loadingAnimation, {
+            toValue: 0,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(loadingOpacity, {
+            toValue: 0.3,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(loadingOpacity, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      loadingAnimation.setValue(0);
+      loadingOpacity.setValue(1);
+    }
+  };
+
+  const renderSkeletonCard = (index: number) => {
+    return (
+      <Animated.View
+        key={index}
+        style={[
+          styles.testCard,
+          styles.skeletonCard,
+          { 
+            backgroundColor: colors[colorScheme ?? 'light'].card,
+            opacity: loadingOpacity 
+          }
+        ]}
+      >
+        <View style={styles.testHeader}>
+          <View style={[styles.skeletonText, { width: 80 }]} />
+          <View style={[styles.skeletonText, { width: 120 }]} />
+        </View>
+        <View style={styles.testDetails}>
+          <View style={styles.detailItem}>
+            <View style={[styles.skeletonText, { width: 100 }]} />
+          </View>
+          <View style={styles.detailItem}>
+            <View style={[styles.skeletonCircle]} />
+          </View>
+        </View>
+        <View style={styles.testActions}>
+          <View style={[styles.skeletonText, { width: 60 }]} />
+        </View>
+      </Animated.View>
+    );
+  };
+
   return (
-    <View style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+    <View style={[styles.container, { backgroundColor: colors[colorScheme ?? 'light'].background }]}>
       <LinearGradient
         colors={colorScheme === 'dark' 
           ? ['#1E3A8A', '#1E40AF', '#3B82F6'] 
@@ -259,7 +347,7 @@ export default function HistoryScreen() {
       {activeTab === 'history' ? (
         <>
           <View style={styles.filters}>
-            <View style={[styles.searchContainer, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
+            <View style={[styles.searchContainer, { backgroundColor: colors[colorScheme ?? 'light'].card }]}>
               <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
               <TextInput
                 style={styles.searchInput}
@@ -276,7 +364,7 @@ export default function HistoryScreen() {
                   key={filter}
                   style={[
                     styles.filterButton,
-                    { backgroundColor: Colors[colorScheme ?? 'light'].card },
+                    { backgroundColor: colors[colorScheme ?? 'light'].card },
                     dateFilter === filter && styles.activeFilter,
                   ]}
                   onPress={() => setDateFilter(filter)}
@@ -298,26 +386,23 @@ export default function HistoryScreen() {
               <RefreshControl
                 refreshing={isRefreshing}
                 onRefresh={onRefresh}
-                colors={[Colors[colorScheme ?? 'light'].tint]} // Android
-                tintColor={Colors[colorScheme ?? 'light'].tint} // iOS
+                colors={[colors[colorScheme ?? 'light'].tint]}
+                tintColor={colors[colorScheme ?? 'light'].tint}
               />
             }
           >
             {isLoading ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={Colors[colorScheme ?? 'light'].tint} />
-                <Text style={[styles.loadingText, { color: Colors[colorScheme ?? 'light'].text }]}>
-                  Loading history...
-                </Text>
+                {[...Array(5)].map((_, index) => renderSkeletonCard(index))}
               </View>
             ) : error ? (
               <View style={styles.errorContainer}>
-                <Ionicons name="alert-circle" size={48} color={Colors[colorScheme ?? 'light'].text} />
-                <Text style={[styles.errorText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                <Ionicons name="alert-circle" size={48} color={colors[colorScheme ?? 'light'].text} />
+                <Text style={[styles.errorText, { color: colors[colorScheme ?? 'light'].text }]}>
                   {error}
                 </Text>
                 <TouchableOpacity
-                  style={[styles.retryButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
+                  style={[styles.retryButton, { backgroundColor: colors[colorScheme ?? 'light'].tint }]}
                   onPress={loadHistory}
                 >
                   <Text style={styles.retryButtonText}>Retry</Text>
@@ -325,9 +410,12 @@ export default function HistoryScreen() {
               </View>
             ) : filteredHistory.length === 0 ? (
               <View style={styles.emptyContainer}>
-                <Ionicons name="time-outline" size={48} color={Colors[colorScheme ?? 'light'].text} />
-                <Text style={[styles.emptyText, { color: Colors[colorScheme ?? 'light'].text }]}>
-                  No history available
+                <Ionicons name="time-outline" size={48} color={colors[colorScheme ?? 'light'].text} />
+                <Text style={[styles.emptyText, { color: colors[colorScheme ?? 'light'].text }]}>
+                  No test results found
+                </Text>
+                <Text style={[styles.emptySubtext, { color: colors[colorScheme ?? 'light'].text }]}>
+                  Try adjusting your filters or perform a new test
                 </Text>
               </View>
             ) : (
@@ -617,6 +705,26 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+  },
+  skeletonCard: {
+    opacity: 0.7,
+  },
+  skeletonText: {
+    height: 16,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 8,
+  },
+  skeletonCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#E5E7EB',
+  },
+  emptySubtext: {
+    marginTop: 8,
+    fontSize: 14,
+    textAlign: 'center',
+    opacity: 0.7,
   },
 });
 

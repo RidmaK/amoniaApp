@@ -23,7 +23,8 @@
       "expo-router",
       "expo-linear-gradient",
       "expo-blur",
-      "react-native-chart-kit"
+      "react-native-chart-kit",
+      "expo-image-manipulator"
     ]
   },
   "include": [
