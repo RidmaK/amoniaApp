@@ -4,16 +4,36 @@
     "strict": true,
     "esModuleInterop": true,
     "jsx": "react-native",
+    "lib": ["ES2015", "DOM"],
+    "target": "ES2015",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
     "paths": {
       "@/*": [
         "./*"
       ]
-    }
+    },
+    "types": [
+      "react",
+      "react-native",
+      "expo",
+      "@expo/vector-icons",
+      "expo-router",
+      "expo-linear-gradient",
+      "expo-blur",
+      "react-native-chart-kit"
+    ]
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "expo-env.d.ts",
+    "types.d.ts"
+  ],
+  "exclude": [
+    "node_modules"
   ]
 }

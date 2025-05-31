@@ -10,6 +10,9 @@ import {
   Dimensions,
   Platform,
   ActivityIndicator,
+  ColorSchemeName,
+  ViewStyle,
+  TextStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from 'react-native';
@@ -17,10 +20,32 @@ import { Colors } from '../../constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { BlurView } from 'expo-blur';
-import { LineChart } from 'react-native-chart-kit';
+import { LineChart, LineChartData } from 'react-native-chart-kit';
 import * as ImagePicker from 'expo-image-picker';
 
 const { width } = Dimensions.get('window');
+
+interface ColorCalibrationPoint {
+  concentration: number;
+  hex: string;
+  rgb: {
+    r: number;
+    g: number;
+    b: number;
+  };
+}
+
+interface ChartConfig {
+  backgroundGradientFrom: string;
+  backgroundGradientTo: string;
+  color: (opacity?: number) => string;
+  strokeWidth: number;
+  barPercentage: number;
+  useShadowColorFromDataset: boolean;
+  decimalPlaces: number;
+  formatYLabel: (value: string) => string;
+  formatXLabel: (value: string) => string;
+}
 
 type TestResult = {
   concentration: number;
@@ -425,35 +450,35 @@ export default function AnalysisScreen() {
     if (!result?.chart || result.chart.length === 0) return null;
 
     // Get the color calibration data from the chart array
-    const colorCalibration = result.chart;
+    const colorCalibration: ColorCalibrationPoint[] = result.chart;
     
     // Find the max concentration to determine the range
-    const maxConcentration = Math.max(...colorCalibration.map(p => p.concentration));
+    const maxConcentration = Math.max(...colorCalibration.map((p: ColorCalibrationPoint) => p.concentration));
     const range = Math.ceil(maxConcentration);
     
     // Create a focused range of data points
     const numPoints = 15; // Fixed number of points for clarity
     const step = Math.max(1, Math.floor(colorCalibration.length / numPoints));
-    const focusedData = colorCalibration.filter((_, index) => index % step === 0);
+    const focusedData = colorCalibration.filter((_: ColorCalibrationPoint, index: number) => index % step === 0);
     
     // Create a gradient scale with key concentration points
     const numKeyPoints = 6; // Reduced number of key points for clarity
-    const keyPoints = Array.from({ length: numKeyPoints }, (_, i) => 
+    const keyPoints = Array.from({ length: numKeyPoints }, (_: unknown, i: number) => 
       (i * range / (numKeyPoints - 1)).toFixed(1)
     ).map(Number);
     
-    const gradientColors = keyPoints.map(conc => {
-      const point = colorCalibration.find(p => Math.abs(p.concentration - conc) < 0.1) || colorCalibration[0];
+    const gradientColors = keyPoints.map((conc: number) => {
+      const point = colorCalibration.find((p: ColorCalibrationPoint) => Math.abs(p.concentration - conc) < 0.1) || colorCalibration[0];
       return point.hex;
     });
 
     // Find the closest point to the current result
     const currentResult = result.concentration;
-    const closestPoint = colorCalibration.reduce((prev, curr) => {
+    const closestPoint = colorCalibration.reduce((prev: ColorCalibrationPoint, curr: ColorCalibrationPoint) => {
       return Math.abs(curr.concentration - currentResult) < Math.abs(prev.concentration - currentResult) ? curr : prev;
     });
 
-    const chartConfig = {
+    const chartConfig: ChartConfig = {
       backgroundGradientFrom: Colors[colorScheme ?? 'light'].card,
       backgroundGradientTo: Colors[colorScheme ?? 'light'].card,
       color: (opacity = 1) => Colors[colorScheme ?? 'light'].tint,
@@ -468,27 +493,27 @@ export default function AnalysisScreen() {
       },
     };
 
-    const data = {
-      labels: focusedData.map((_, index) => index.toString()),
+    const data: LineChartData = {
+      labels: focusedData.map((_: ColorCalibrationPoint, index: number) => index.toString()),
       datasets: [{
-        data: focusedData.map(point => point.concentration),
+        data: focusedData.map((point: ColorCalibrationPoint) => point.concentration),
         color: (opacity = 1) => Colors[colorScheme ?? 'light'].tint,
         strokeWidth: 2,
       }],
-  };
+    };
 
-  return (
+    return (
       <View style={styles.chartContainer}>
         <Text style={[styles.chartTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
           Color vs Concentration
         </Text>
         <View style={styles.chartWrapper}>
-      <LineChart
+          <LineChart
             data={data}
             width={width - 40}
-        height={220}
+            height={220}
             chartConfig={chartConfig}
-        bezier
+            bezier
             style={styles.chart}
             withDots={true}
             withInnerLines={true}
