@@ -192,81 +192,25 @@ export default function AnalysisScreen() {
     }
   };
 
-  // Update imageUri when initialImageUri changes
+  // Always clear previous result and start analyzing when a new image is selected
   useEffect(() => {
     if (initialImageUri) {
       console.log('New image received:', initialImageUri);
-      setImageUri(initialImageUri);
-      
-      // If this is a new capture, reset the result state
-      if (isNewCapture === 'true') {
-        setResult(defaultResult);
-        setIsAnalyzing(true);
-      }
+      setResult(defaultResult);         // Clear previous result
+      setIsAnalyzing(true);             // Set analyzing state
+      setImageUri(initialImageUri);     // Set new image
     }
-  }, [initialImageUri, isNewCapture]);
+  }, [initialImageUri, timestamp]);
 
-  // Handle analysis when imageUri changes
+  // Start analysis whenever imageUri changes
   useEffect(() => {
     if (imageUri) {
       console.log('Image URI changed, starting analysis...');
-      // Only start new analysis if this is a new capture
-      if (isNewCapture === 'true') {
-        analyzeImage();
-      }
+      analyzeImage();
     }
-  }, [imageUri, timestamp, isNewCapture]);
+  }, [imageUri]);
 
-  const pickImage = async () => {
-    try {
-      // Clear previous results
-      setResult(defaultResult);
-      setIsAnalyzing(false);
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 1,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        const newImageUri = result.assets[0].uri;
-        console.log('New image selected:', newImageUri);
-        setImageUri(newImageUri);
-      }
-    } catch (error) {
-      console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image. Please try again.');
-    }
-  };
-
-  const takePhoto = async () => {
-    try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
-        return;
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 1,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        const newImageUri = result.assets[0].uri;
-        console.log('New photo taken:', newImageUri);
-        setImageUri(newImageUri);
-        setIsAnalyzing(true);
-      }
-    } catch (error) {
-      console.error('Error taking photo:', error);
-      Alert.alert('Error', 'Failed to take photo. Please try again.');
-    }
-  };
+  
 
   const analyzeImage = async () => {
     console.log('Starting analyzeImage with URI:', imageUri);

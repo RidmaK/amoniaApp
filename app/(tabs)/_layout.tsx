@@ -14,7 +14,6 @@ export default function TabLayout() {
   const colorScheme = useColorScheme() as 'light' | 'dark' | null;
   const [isCapturing, setIsCapturing] = useState(false);
   const [showCustomAlert, setShowCustomAlert] = useState(false);
-  const [showDrawer, setShowDrawer] = useState(false);
   const slideAnim = useRef(new Animated.Value(0)).current;
   const [alertData, setAlertData] = useState<{
     title: string;
@@ -22,111 +21,37 @@ export default function TabLayout() {
     onProceed: () => void;
   } | null>(null);
 
-  const toggleDrawer = () => {
-    const toValue = showDrawer ? 0 : 1;
-    Animated.spring(slideAnim, {
-      toValue,
-      useNativeDriver: true,
-      tension: 65,
-      friction: 11
-    }).start();
-    setShowDrawer(!showDrawer);
-  };
-
-  const BottomDrawer = () => {
-    return (
-      <Modal
-        visible={showDrawer}
-        transparent
-        animationType="none"
-        onRequestClose={toggleDrawer}
-      >
-        <TouchableOpacity 
-          style={styles.drawerOverlay} 
-          activeOpacity={1} 
-          onPress={toggleDrawer}
-        >
-          <Animated.View 
-            style={[
-              styles.drawer,
-              {
-                transform: [{
-                  translateY: slideAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [300, 0]
-                  })
-                }]
-              }
-            ]}
-          >
-            <View style={styles.drawerHandle} />
-            <View style={styles.drawerContent}>
-              <TouchableOpacity 
-                style={[styles.drawerButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
-                onPress={() => {
-                  toggleDrawer();
-                  handleCapture();
-                }}
-              >
-                <View style={styles.drawerButtonIcon}>
-                  <Ionicons name="camera" size={24} color="white" />
-                </View>
-                <Text style={styles.drawerButtonText}>Take Photo</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={[styles.drawerButton, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}
-                onPress={() => {
-                  toggleDrawer();
-                  handleGalleryPick();
-                }}
-              >
-                <View style={[styles.drawerButtonIcon, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
-                  <Ionicons name="images" size={24} color={Colors[colorScheme ?? 'light'].tint} />
-                </View>
-                <Text style={[styles.drawerButtonText, { color: Colors[colorScheme ?? 'light'].text }]}>
-                  Choose from Gallery
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-        </TouchableOpacity>
-      </Modal>
-    );
-  };
-
   const CustomAlert = () => {
     if (!showCustomAlert || !alertData) return null;
-
+  
     return (
       <View style={styles.alertOverlay}>
-        <BlurView intensity={20} style={styles.alertBlur}>
-          <View style={[styles.alertContainer, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
-            <View style={styles.alertIconContainer}>
-              <Ionicons 
-                name={alertData.title.includes('concentrated') ? 'warning' : 'information-circle'} 
-                size={48} 
-                color={Colors[colorScheme ?? 'light'].tint} 
-              />
-            </View>
-            <Text style={[styles.alertTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
-              {alertData.title}
-            </Text>
-            <Text style={[styles.alertMessage, { color: Colors[colorScheme ?? 'light'].text }]}>
-              {alertData.message}
-            </Text>
-            <TouchableOpacity
-              style={[styles.alertButton, styles.alertButtonCancel]}
-              onPress={() => {
-                setShowCustomAlert(false);
-              }}
-            >
-              <Text style={[styles.alertButtonText, { color: Colors[colorScheme ?? 'light'].text }]}>
-                OK
-              </Text>
-            </TouchableOpacity>
+        <BlurView intensity={20} style={styles.alertBlur} />
+        <View style={[styles.alertContainer, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
+          <View style={styles.alertIconContainer}>
+            <Ionicons 
+              name={alertData.title.includes('concentrated') ? 'warning' : 'information-circle'} 
+              size={48} 
+              color={Colors[colorScheme ?? 'light'].tint} 
+            />
           </View>
-        </BlurView>
+          <Text style={[styles.alertTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
+            {alertData.title}
+          </Text>
+          <Text style={[styles.alertMessage, { color: Colors[colorScheme ?? 'light'].text }]}>
+            {alertData.message}
+          </Text>
+          <TouchableOpacity
+            style={[styles.alertButton, styles.alertButtonCancel]}
+            onPress={() => {
+              setShowCustomAlert(false);
+            }}
+          >
+            <Text style={[styles.alertButtonText, { color: Colors[colorScheme ?? 'light'].text }]}>
+              OK
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
@@ -375,7 +300,9 @@ export default function TabLayout() {
               <View style={styles.captureButtonContainer}>
                 <TouchableOpacity
                   style={[styles.captureButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
-                  onPress={toggleDrawer}
+                  onPress={() => {
+                    router.push('/(tabs)/capture');
+                  }}
                   disabled={isCapturing}
                 >
                   {isCapturing ? (
@@ -404,7 +331,6 @@ export default function TabLayout() {
         />
       </Tabs>
       <CustomAlert />
-      <BottomDrawer />
     </>
   );
 }

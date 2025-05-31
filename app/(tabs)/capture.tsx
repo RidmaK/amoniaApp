@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import React, { useState, useRef } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -20,8 +20,13 @@ import {
 } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { BlurView } from 'expo-blur';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
 
 export default function CaptureScreen() {
+  const { openDrawer: openDrawerParam } = useLocalSearchParams();
+  const [showDrawer, setShowDrawer] = useState(false);
+
   const colorScheme = useColorScheme() as 'light' | 'dark' | null;
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
@@ -31,7 +36,6 @@ export default function CaptureScreen() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [showCustomAlert, setShowCustomAlert] = useState(false);
-  const [showDrawer, setShowDrawer] = useState(false);
   const slideAnim = useRef(new Animated.Value(0)).current;
   const [alertData, setAlertData] = useState<{
     title: string;
@@ -39,15 +43,34 @@ export default function CaptureScreen() {
     onProceed: () => void;
   } | null>(null);
 
+  useEffect(() => {
+    if (openDrawerParam === 'true') {
+      setShowDrawer(true);
+    }
+  }, [openDrawerParam]);
+
   const toggleDrawer = () => {
-    const toValue = showDrawer ? 0 : 1;
+    if (showDrawer) {
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 65,
+        friction: 11
+      }).start();
+      setShowDrawer(false);
+    } else {
+      openDrawer();
+    }
+  };
+
+  const openDrawer = () => {
     Animated.spring(slideAnim, {
-      toValue,
+      toValue: 1,
       useNativeDriver: true,
       tension: 65,
       friction: 11
     }).start();
-    setShowDrawer(!showDrawer);
+    setShowDrawer(true);
   };
 
   const BottomDrawer = () => {
@@ -86,7 +109,7 @@ export default function CaptureScreen() {
                 }}
               >
                 <View style={styles.drawerButtonIcon}>
-                  <Ionicons name="camera" size={24} color="white" />
+                  <Ionicons name="camera" size={20} color="white" />
                 </View>
                 <Text style={styles.drawerButtonText}>Take Photo</Text>
               </TouchableOpacity>
@@ -99,7 +122,7 @@ export default function CaptureScreen() {
                 }}
               >
                 <View style={[styles.drawerButtonIcon, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
-                  <Ionicons name="images" size={24} color={Colors[colorScheme ?? 'light'].tint} />
+                  <Ionicons name="images" size={20} color={Colors[colorScheme ?? 'light'].tint} />
                 </View>
                 <Text style={[styles.drawerButtonText, { color: Colors[colorScheme ?? 'light'].text }]}>
                   Choose from Gallery
@@ -125,40 +148,39 @@ export default function CaptureScreen() {
   };
 
   const CustomAlert = () => {
-    if (!showCustomAlert || !alertData) return null;
+  if (!showCustomAlert || !alertData) return null;
 
-    return (
-      <View style={styles.alertOverlay}>
-        <BlurView intensity={20} style={styles.alertBlur}>
-          <View style={[styles.alertContainer, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
-            <View style={styles.alertIconContainer}>
-              <Ionicons 
-                name={alertData.title.includes('concentrated') ? 'warning' : 'information-circle'} 
-                size={48} 
-                color={Colors[colorScheme ?? 'light'].tint} 
-              />
-            </View>
-            <Text style={[styles.alertTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
-              {alertData.title}
-            </Text>
-            <Text style={[styles.alertMessage, { color: Colors[colorScheme ?? 'light'].text }]}>
-              {alertData.message}
-            </Text>
-            <TouchableOpacity
-              style={[styles.alertButton, styles.alertButtonCancel]}
-              onPress={() => {
-                setShowCustomAlert(false);
-              }}
-            >
-              <Text style={[styles.alertButtonText, { color: Colors[colorScheme ?? 'light'].text }]}>
-                OK
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </BlurView>
+  return (
+    <View style={styles.alertOverlay}>
+      <BlurView intensity={20} style={styles.alertBlur} />
+      <View style={[styles.alertContainer, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
+        <View style={styles.alertIconContainer}>
+          <Ionicons 
+            name={alertData.title.includes('concentrated') ? 'warning' : 'information-circle'} 
+            size={48} 
+            color={Colors[colorScheme ?? 'light'].tint} 
+          />
+        </View>
+        <Text style={[styles.alertTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
+          {alertData.title}
+        </Text>
+        <Text style={[styles.alertMessage, { color: Colors[colorScheme ?? 'light'].text }]}>
+          {alertData.message}
+        </Text>
+        <TouchableOpacity
+          style={[styles.alertButton, styles.alertButtonCancel]}
+          onPress={() => {
+            setShowCustomAlert(false);
+          }}
+        >
+          <Text style={[styles.alertButtonText, { color: Colors[colorScheme ?? 'light'].text }]}>
+            OK
+          </Text>
+        </TouchableOpacity>
       </View>
-    );
-  };
+    </View>
+  );
+};
 
   const validateColor = async (imageUri: string) => {
     try {
@@ -364,6 +386,16 @@ export default function CaptureScreen() {
     }
   };
 
+  useFocusEffect(
+    useCallback(() => {
+      const timeout = setTimeout(() => {
+        openDrawer();
+      }, 350); // 350ms delay for smoothness
+
+      return () => clearTimeout(timeout);
+    }, [])
+  );
+
   return (
     <View style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
       <LinearGradient
@@ -471,6 +503,7 @@ export default function CaptureScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    position: 'relative', // Ensure overlay positions correctly
   },
   header: {
     padding: 20,
@@ -567,30 +600,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
-    borderRadius: 20,
-    gap: 16,
+    padding: 12, // smaller padding
+    borderRadius: 14, // slightly less rounded
+    gap: 10,
+    backgroundColor: '#2563EB',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.10,
+    shadowRadius: 6,
+    elevation: 4,
+    minHeight: 44,
+    minWidth: 120,
   },
   buttonIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 6,
   },
   buttonText: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '600',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
     color: 'white',
   },
   tipsSection: {
@@ -645,6 +679,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
+    backgroundColor: 'rgba(0,0,0,0.25)', // Add dimming effect
   },
   alertBlur: {
     position: 'absolute',
@@ -747,20 +782,22 @@ const styles = StyleSheet.create({
   drawerButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-    gap: 16,
+    padding: 10, // smaller padding
+    borderRadius: 12,
+    gap: 10,
+    marginBottom: 4,
+    minHeight: 40,
   },
   drawerButtonIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   drawerButtonText: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '600',
     color: 'white',
   },

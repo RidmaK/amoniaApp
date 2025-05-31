@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Ammonia Analyzer",
-    "slug": "amonia-checker",
+    "slug": "ammonia-analyzer",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -63,8 +63,10 @@
     },
     "extra": {
       "eas": {
-        "projectId": "42731b46-50fe-4390-bb65-2454f2b0412a"
-      }
-    }
+        "projectId": "2a777ff1-7e11-4fea-8fbe-15ec22ecb493"
+      },
+      "router": {}
+    },
+    "owner": "ridmaxess"
   }
 }

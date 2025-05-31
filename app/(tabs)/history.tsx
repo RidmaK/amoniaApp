@@ -9,6 +9,7 @@ import {
   Alert,
   Platform,
   ActivityIndicator,
+  RefreshControl, // Import RefreshControl
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from 'react-native';
@@ -41,6 +42,7 @@ export default function HistoryScreen() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [filteredHistory, setFilteredHistory] = useState<HistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false); // State for pull-to-refresh
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
@@ -73,6 +75,16 @@ export default function HistoryScreen() {
       setError('Failed to load history data. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    // Function to handle pull-to-refresh
+    try {
+      setIsRefreshing(true);
+      await loadHistory();
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -280,7 +292,17 @@ export default function HistoryScreen() {
             </View>
           </View>
 
-          <ScrollView style={styles.content}>
+          <ScrollView
+            style={styles.content}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={onRefresh}
+                colors={[Colors[colorScheme ?? 'light'].tint]} // Android
+                tintColor={Colors[colorScheme ?? 'light'].tint} // iOS
+              />
+            }
+          >
             {isLoading ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={Colors[colorScheme ?? 'light'].tint} />
