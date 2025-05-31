@@ -461,7 +461,7 @@ export default function AnalysisScreen() {
       barPercentage: 0.5,
       useShadowColorFromDataset: false,
       decimalPlaces: 1,
-      formatYLabel: (value: string) => `${parseFloat(value).toFixed(1)} mg/L`,
+      formatYLabel: (value: string) => `${parseFloat(value).toFixed(1)} mol/dm⁻³`,
       formatXLabel: (value: string) => {
         const index = parseInt(value);
         return focusedData[index]?.concentration.toFixed(1) || '';
@@ -510,7 +510,7 @@ export default function AnalysisScreen() {
           ]}>
             <View style={styles.resultMarkerLine} />
             <View style={styles.resultMarkerDot} />
-            <Text style={styles.resultMarkerText}>{currentResult.toFixed(2)} mg/L</Text>
+            <Text style={styles.resultMarkerText}>{currentResult.toFixed(2)} mol/dm⁻³</Text>
           </View>
         </View>
         <View style={styles.colorGradientContainer}>
@@ -541,7 +541,7 @@ export default function AnalysisScreen() {
                   }
                 ]}
               >
-                {point.toFixed(1)} mg/L
+                {point.toFixed(1)} mol/dm⁻³
               </Text>
             ))}
           </View>
@@ -550,7 +550,7 @@ export default function AnalysisScreen() {
           <View style={styles.legendItem}>
             <View style={[styles.legendColor, { backgroundColor: result.color?.hex || Colors[colorScheme ?? 'light'].tint }]} />
             <Text style={[styles.legendText, { color: Colors[colorScheme ?? 'light'].text }]}>
-              Current: {result.concentration.toFixed(2)} mg/L
+              Current: {result.concentration.toFixed(2)} mol/dm⁻³
             </Text>
           </View>
           <View style={styles.legendItem}>
@@ -692,7 +692,7 @@ export default function AnalysisScreen() {
                     </Text>
                     <View style={styles.resultValueContainer}>
                       <Text style={[styles.resultValue, { color: Colors[colorScheme ?? 'light'].text }]}>
-                        {result.concentration.toFixed(3)} mg/L
+                        {result.concentration.toFixed(3)} mol/dm⁻³
                       </Text>
                       <View style={[styles.statusBadge, { backgroundColor: getConcentrationStatus(result.concentration).color }]}>
                         <Text style={styles.statusText}>

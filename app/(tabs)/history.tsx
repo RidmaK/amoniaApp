@@ -167,7 +167,7 @@ export default function HistoryScreen() {
           <View style={styles.detailItem}>
             <Ionicons name="flask" size={16} color={Colors[colorScheme ?? 'light'].tint} />
             <Text style={styles.detailText}>
-              {item.concentration.toFixed(3)} mg/L
+              {item.concentration.toFixed(3)} mol/dm⁻³
             </Text>
           </View>
           <View style={styles.detailItem}>

@@ -3,6 +3,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState, useRef, useEffect } from 'react';
+import * as ImageManipulator from 'expo-image-manipulator';
 import {
   ActivityIndicator,
   Alert,
@@ -227,6 +228,33 @@ export default function CaptureScreen() {
     }
   };
 
+  const processImage = async (imageUri: string) => {
+    try {
+      // First, enhance the image quality
+      const enhancedImage = await ImageManipulator.manipulateAsync(
+        imageUri,
+        [
+          // Resize while maintaining aspect ratio
+          { resize: { width: 1200 } },
+          // Auto-enhance the image
+          { enhance: 1.2 },
+          // Increase contrast
+          { contrast: 1.2 },
+          // Adjust brightness
+          { brightness: 1.1 },
+          // Sharpen the image
+          { sharpen: 1 }
+        ],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+      );
+
+      return enhancedImage.uri;
+    } catch (error) {
+      console.error('Error processing image:', error);
+      throw error;
+    }
+  };
+
   const handleCapture = async () => {
     if (isCapturing) return;
     
@@ -240,33 +268,27 @@ export default function CaptureScreen() {
         return;
       }
 
-      // Add a small delay to ensure camera is ready
-      await new Promise(resolve => setTimeout(resolve, 500));
-
       // Launch camera with optimized options
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 0.8, // Slightly reduced quality for better performance
-        exif: false, // Disable EXIF data to reduce memory usage
-        base64: false, // Disable base64 to reduce memory usage
+        quality: 1, // Use max quality since we'll process it later
+        exif: false,
+        base64: false,
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
       });
-
-      // Add a small delay after camera closes
-      await new Promise(resolve => setTimeout(resolve, 300));
 
       if (!result.canceled && result.assets[0]) {
         const imageUri = result.assets[0].uri;
         console.log('Image captured:', imageUri);
-        setPreviewUri(imageUri);
         
-        // Add a small delay before validation
-        await new Promise(resolve => setTimeout(resolve, 200));
+        // Process the image
+        const processedUri = await processImage(imageUri);
+        setPreviewUri(processedUri);
         
         try {
           // Validate color before proceeding
-          const validationResult = await validateColor(imageUri);
+          const validationResult = await validateColor(processedUri);
           
           if (validationResult.status === 'error') {
             setAlertData({
@@ -277,7 +299,7 @@ export default function CaptureScreen() {
                   router.push({
                     pathname: '/(tabs)/analysis',
                     params: { 
-                      imageUri,
+                      imageUri: processedUri,
                       timestamp: new Date().getTime(),
                       isNewCapture: 'true'
                     }
@@ -292,7 +314,7 @@ export default function CaptureScreen() {
               router.push({
                 pathname: '/(tabs)/analysis',
                 params: { 
-                  imageUri,
+                  imageUri: processedUri,
                   timestamp: new Date().getTime(),
                   isNewCapture: 'true'
                 }
@@ -316,10 +338,7 @@ export default function CaptureScreen() {
         [{ text: 'OK' }]
       );
     } finally {
-      // Add a small delay before resetting the capturing state
-      setTimeout(() => {
-        setIsCapturing(false);
-      }, 300);
+      setIsCapturing(false);
     }
   };
 
@@ -341,10 +360,13 @@ export default function CaptureScreen() {
       if (!result.canceled && result.assets[0]) {
         const imageUri = result.assets[0].uri;
         console.log('Image selected from gallery:', imageUri);
-        setPreviewUri(imageUri);
+        
+        // Process the image
+        const processedUri = await processImage(imageUri);
+        setPreviewUri(processedUri);
 
         // Validate color before proceeding
-        const validationResult = await validateColor(imageUri);
+        const validationResult = await validateColor(processedUri);
         
         if (validationResult.status === 'error') {
           setAlertData({
@@ -355,7 +377,7 @@ export default function CaptureScreen() {
                 router.push({
                   pathname: '/(tabs)/analysis',
                   params: { 
-                    imageUri,
+                    imageUri: processedUri,
                     timestamp: new Date().getTime(),
                     isNewCapture: 'true'
                   },
@@ -370,7 +392,7 @@ export default function CaptureScreen() {
             router.push({
               pathname: '/(tabs)/analysis',
               params: { 
-                imageUri,
+                imageUri: processedUri,
                 timestamp: new Date().getTime(),
                 isNewCapture: 'true'
               },
