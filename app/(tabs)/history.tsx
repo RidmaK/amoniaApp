@@ -94,6 +94,7 @@ export default function HistoryScreen() {
 
       const data: HistoryResponse = await response.json();
       setHistory(data.history);
+      setFilteredHistory(data.history);
     } catch (error) {
       console.error('Error loading history:', error);
       setError('Failed to load history data. Please try again.');
@@ -423,18 +424,20 @@ export default function HistoryScreen() {
                   <Text style={styles.retryButtonText}>Retry</Text>
                 </TouchableOpacity>
               </View>
-            ) : filteredHistory.length === 0 ? (
+            ) : !isLoading && filteredHistory.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Ionicons name="time-outline" size={48} color={colors[colorScheme ?? 'light'].text} />
                 <Text style={[styles.emptyText, { color: colors[colorScheme ?? 'light'].text }]}>
-                  No test results found
+                  {searchQuery || dateFilter !== 'all' ? 'No matching results found' : 'No test results yet'}
                 </Text>
                 <Text style={[styles.emptySubtext, { color: colors[colorScheme ?? 'light'].text }]}>
-                  Try adjusting your filters or perform a new test
+                  {searchQuery || dateFilter !== 'all' ? 
+                    'Try adjusting your filters' : 
+                    'Perform a test to see results here'}
                 </Text>
               </View>
             ) : (
-              filteredHistory.map((item, index) => renderHistoryItem(item, index))
+              filteredHistory.map((item: HistoryItem, index: number) => renderHistoryItem(item, index))
             )}
           </ScrollView>
         </>
