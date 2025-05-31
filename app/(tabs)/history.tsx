@@ -263,24 +263,39 @@ export default function HistoryScreen() {
           styles.skeletonCard,
           { 
             backgroundColor: colors[colorScheme ?? 'light'].card,
-            opacity: loadingOpacity 
+            opacity: loadingOpacity,
+            transform: [
+              {
+                translateX: loadingAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-10, 0]
+                })
+              }
+            ]
           }
         ]}
       >
         <View style={styles.testHeader}>
-          <View style={[styles.skeletonText, { width: 80 }]} />
-          <View style={[styles.skeletonText, { width: 120 }]} />
+          <View style={[styles.skeletonText, { width: 80, height: 20 }]} />
+          <View style={[styles.skeletonText, { width: 120, height: 16 }]} />
         </View>
+
         <View style={styles.testDetails}>
           <View style={styles.detailItem}>
-            <View style={[styles.skeletonText, { width: 100 }]} />
+            <View style={[styles.skeletonCircle, { marginRight: 8 }]} />
+            <View style={[styles.skeletonText, { width: 120, height: 18 }]} />
           </View>
           <View style={styles.detailItem}>
             <View style={[styles.skeletonCircle]} />
+            <View style={[styles.skeletonText, { width: 60, height: 18, marginLeft: 8 }]} />
           </View>
         </View>
+
         <View style={styles.testActions}>
-          <View style={[styles.skeletonText, { width: 60 }]} />
+          <View style={[styles.skeletonButton]}>
+            <View style={[styles.skeletonCircle, { width: 20, height: 20, marginRight: 4 }]} />
+            <View style={[styles.skeletonText, { width: 40, height: 16 }]} />
+          </View>
         </View>
       </Animated.View>
     );
@@ -708,6 +723,7 @@ const styles = StyleSheet.create({
   },
   skeletonCard: {
     opacity: 0.7,
+    overflow: 'hidden',
   },
   skeletonText: {
     height: 16,
@@ -719,6 +735,13 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     backgroundColor: '#E5E7EB',
+  },
+  skeletonButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E5E7EB',
+    padding: 8,
+    borderRadius: 8,
   },
   emptySubtext: {
     marginTop: 8,
