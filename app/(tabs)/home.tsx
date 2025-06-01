@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Image, Dimensions, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import type { ColorSchemeName } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Image, Dimensions, Platform, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from 'react-native';
 import { Colors } from '../../constants/Colors';
@@ -8,6 +9,28 @@ import { router } from 'expo-router';
 import { BlurView } from 'expo-blur';
 
 const { width } = Dimensions.get('window');
+
+type ColorScheme = 'light' | 'dark';
+
+type AppColors = {
+  [key in ColorScheme]: {
+    background: string;
+    card: string;
+    text: string;
+    tint: string;
+    tabIconDefault: string;
+    tabIconSelected: string;
+  };
+};
+
+type HistoryItem = {
+  concentration: number;
+  timestamp: string;
+};
+
+type HistoryResponse = {
+  history: HistoryItem[];
+};
 
 type ConcentrationData = {
   id: string;
@@ -22,17 +45,46 @@ type ConcentrationData = {
 type GradientColors = readonly [string, string];
 
 export default function HomeScreen() {
-  const colorScheme = useColorScheme();
-  const [recentTests, setRecentTests] = useState<ConcentrationData[]>([
-    {
-      id: '1',
-      name: 'Sample 1',
-      concentration: 0.5,
-      dilutionFactor: 1,
-      date: new Date(),
-      notes: 'Initial test',
-    },
-  ]);
+  const colorScheme = useColorScheme() as ColorScheme;
+  const colors = Colors as AppColors;
+  const [recentTests, setRecentTests] = useState<ConcentrationData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
+  const loadHistory = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('https://test3.xessglobal.net/history');
+      
+      if (!response.ok) {
+        throw new Error('Failed to load history data');
+      }
+
+      const data = await response.json();
+      // Sort by timestamp and get the latest test
+      const sortedHistory = data.history.sort((a: any, b: any) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      
+      if (sortedHistory.length > 0) {
+        setRecentTests([{
+          id: '1',
+          name: 'Latest Test',
+          concentration: sortedHistory[0].concentration,
+          dilutionFactor: 1,
+          date: new Date(sortedHistory[0].timestamp),
+          notes: 'Latest measurement',
+        }]);
+      }
+    } catch (error) {
+      console.error('Error loading history:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const features = [
     {
@@ -66,7 +118,7 @@ export default function HomeScreen() {
   ];
 
   return (
-    <View style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+    <View style={[styles.container, { backgroundColor: colors[colorScheme].background }]}>
       <LinearGradient
         colors={colorScheme === 'dark' 
           ? ['#1E3A8A', '#1E40AF', '#3B82F6'] 
@@ -95,7 +147,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: Colors[colorScheme ?? 'light'].text }]}>Quick Actions</Text>
+          <Text style={[styles.sectionTitle, { color: colors[colorScheme].text }]}>Quick Actions</Text>
           <View style={styles.actionsContainer}>
             {features.map((feature, index) => (
               <TouchableOpacity
@@ -121,10 +173,17 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: Colors[colorScheme ?? 'light'].text }]}>Recent Tests</Text>
-          <View style={[styles.card, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
-            {recentTests.length > 0 ? (
-              recentTests.map((test, index) => (
+          <Text style={[styles.sectionTitle, { color: colors[colorScheme].text }]}>Recent Tests</Text>
+          <View style={[styles.card, { backgroundColor: colors[colorScheme].card }]}>
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors[colorScheme].tint} />
+                <Text style={[styles.loadingText, { color: colors[colorScheme].text }]}>
+                  Loading latest test...
+                </Text>
+              </View>
+            ) : recentTests.length > 0 ? (
+              recentTests.map((test: ConcentrationData, index: number) => (
                 <TouchableOpacity
                   key={index}
                   style={styles.testItem}
@@ -134,26 +193,26 @@ export default function HomeScreen() {
                   })}
                 >
                   <View style={styles.testInfo}>
-                    <Text style={[styles.testDate, { color: Colors[colorScheme ?? 'light'].text }]}>
+                    <Text style={[styles.testDate, { color: colors[colorScheme].text }]}>
                       {new Date(test.date).toLocaleDateString()}
                     </Text>
                     <View style={styles.testValueContainer}>
-                      <Text style={[styles.testValue, { color: Colors[colorScheme ?? 'light'].text }]}>
-                        {test.concentration.toFixed(2)} mg/L
+                      <Text style={[styles.testValue, { color: colors[colorScheme].text }]}>
+                        {test.concentration.toFixed(3)} mol/dm⁻³
                       </Text>
                       <View style={[styles.testStatus, { backgroundColor: test.concentration > 0.5 ? '#EF4444' : '#10B981' }]} />
                     </View>
                     {test.notes && (
-                      <Text style={[styles.testNotes, { color: Colors[colorScheme ?? 'light'].tabIconDefault }]}>
+                      <Text style={[styles.testNotes, { color: colors[colorScheme].tabIconDefault }]}>
                         {test.notes}
                       </Text>
                     )}
                   </View>
-                  <Ionicons name="chevron-forward" size={24} color={Colors[colorScheme ?? 'light'].text} />
+                  <Ionicons name="chevron-forward" size={24} color={colors[colorScheme].text} />
                 </TouchableOpacity>
               ))
             ) : (
-              <Text style={[styles.emptyText, { color: Colors[colorScheme ?? 'light'].text }]}>
+              <Text style={[styles.emptyText, { color: colors[colorScheme].text }]}>
                 No recent tests
               </Text>
             )}
@@ -161,13 +220,13 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: Colors[colorScheme ?? 'light'].text }]}>Quick Tips</Text>
-          <View style={[styles.card, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
+          <Text style={[styles.sectionTitle, { color: colors[colorScheme].text }]}>Quick Tips</Text>
+          <View style={[styles.card, { backgroundColor: colors[colorScheme].card }]}>
             <View style={styles.tipItem}>
               <View style={[styles.tipIconContainer, { backgroundColor: '#3B82F6' }]}>
                 <Ionicons name="information-circle" size={24} color="white" />
               </View>
-              <Text style={[styles.tipText, { color: Colors[colorScheme ?? 'light'].text }]}>
+              <Text style={[styles.tipText, { color: colors[colorScheme].text }]}>
                 Ensure proper lighting when capturing test results
               </Text>
             </View>
@@ -175,7 +234,7 @@ export default function HomeScreen() {
               <View style={[styles.tipIconContainer, { backgroundColor: '#10B981' }]}>
                 <Ionicons name="information-circle" size={24} color="white" />
               </View>
-              <Text style={[styles.tipText, { color: Colors[colorScheme ?? 'light'].text }]}>
+              <Text style={[styles.tipText, { color: colors[colorScheme].text }]}>
                 Use the dilution calculator for accurate measurements
               </Text>
             </View>
@@ -183,7 +242,7 @@ export default function HomeScreen() {
               <View style={[styles.tipIconContainer, { backgroundColor: '#F59E0B' }]}>
                 <Ionicons name="information-circle" size={24} color="white" />
               </View>
-              <Text style={[styles.tipText, { color: Colors[colorScheme ?? 'light'].text }]}>
+              <Text style={[styles.tipText, { color: colors[colorScheme].text }]}>
                 Keep test samples at room temperature
               </Text>
             </View>
@@ -357,5 +416,15 @@ const styles = StyleSheet.create({
   tipText: {
     flex: 1,
     fontSize: 14,
+  },
+  loadingContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 14,
+    opacity: 0.7,
   },
 });
