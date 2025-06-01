@@ -243,42 +243,17 @@ export default function CaptureScreen() {
       setIsProcessing(true);
       setProcessingStep(0);
 
-      // Step 1: Enhance image quality
+      // Process image with brightness and contrast only
       await new Promise(resolve => setTimeout(resolve, 500));
-      const enhancedImage = await ImageManipulator.manipulateAsync(
-        imageUri,
-        [
-          { resize: { width: 1200 } },
-        ],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
-      );
-      
-      setProcessingStep(1);
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Step 2: Apply brightness and contrast
-      const processedUri = await processImageWithEffects(enhancedImage.uri, {
+      const processedUri = await processImageWithEffects(imageUri, {
         brightness: 1.2, // Increase brightness by 20%
-        contrast: 1.3,   // Increase contrast by 30%
+        contrast: 1.3   // Increase contrast by 30%
       });
-
-      setProcessingStep(2);
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Step 3: Final optimization
-      const finalImage = await ImageManipulator.manipulateAsync(
-        processedUri,
-        [
-          { flip: ImageManipulator.FlipType.Vertical },
-          { flip: ImageManipulator.FlipType.Vertical }, // Double flip to normalize
-        ],
-        { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
-      );
 
       setProcessingStep(3);
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      return finalImage.uri;
+      return processedUri;
     } catch (error) {
       console.error('Error processing image:', error);
       throw error;

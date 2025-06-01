@@ -272,30 +272,32 @@ export default function HistoryScreen() {
                   outputRange: [-10, 0]
                 })
               }
-            ]
+            ],
+            width: '100%',
+            marginHorizontal: 0,
           }
         ]}
       >
         <View style={styles.testHeader}>
-          <View style={[styles.skeletonText, { width: 80, height: 20 }]} />
-          <View style={[styles.skeletonText, { width: 120, height: 16 }]} />
+          <View style={[styles.skeletonText, { width: '40%', height: 20 }]} />
+          <View style={[styles.skeletonText, { width: '55%', height: 16 }]} />
         </View>
 
         <View style={styles.testDetails}>
           <View style={styles.detailItem}>
             <View style={[styles.skeletonCircle, { marginRight: 8 }]} />
-            <View style={[styles.skeletonText, { width: 120, height: 18 }]} />
+            <View style={[styles.skeletonText, { width: '60%', height: 18 }]} />
           </View>
           <View style={styles.detailItem}>
             <View style={[styles.skeletonCircle]} />
-            <View style={[styles.skeletonText, { width: 60, height: 18, marginLeft: 8 }]} />
+            <View style={[styles.skeletonText, { width: '30%', height: 18, marginLeft: 8 }]} />
           </View>
         </View>
 
         <View style={styles.testActions}>
-          <View style={[styles.skeletonButton]}>
-            <View style={[styles.skeletonCircle, { width: 20, height: 20, marginRight: 4 }]} />
-            <View style={[styles.skeletonText, { width: 40, height: 16 }]} />
+          <View style={[styles.skeletonButton, { width: '100%' }]}>
+            <View style={[styles.skeletonCircle, { width: 20, height: 20, marginRight: 8 }]} />
+            <View style={[styles.skeletonText, { width: '30%', height: 16 }]} />
           </View>
         </View>
       </Animated.View>
@@ -725,24 +727,29 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   skeletonCard: {
-    opacity: 0.7,
-    overflow: 'hidden',
+    padding: 16,
+    marginBottom: 12,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   skeletonText: {
-    height: 16,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderRadius: 4,
   },
   skeletonCircle: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: 'rgba(0,0,0,0.05)',
   },
   skeletonButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E5E7EB',
+    backgroundColor: 'rgba(0,0,0,0.03)',
     padding: 8,
     borderRadius: 8,
   },
