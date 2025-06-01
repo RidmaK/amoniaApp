@@ -23,6 +23,7 @@ import { Colors } from '../../constants/Colors';
 import { BlurView } from 'expo-blur';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
+import { processImage as processImageWithEffects } from '../utils/imageProcessing';
 
 export default function CaptureScreen() {
   const { openDrawer: openDrawerParam } = useLocalSearchParams();
@@ -243,12 +244,11 @@ export default function CaptureScreen() {
       setProcessingStep(0);
 
       // Step 1: Enhance image quality
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate processing time
+      await new Promise(resolve => setTimeout(resolve, 500));
       const enhancedImage = await ImageManipulator.manipulateAsync(
         imageUri,
         [
           { resize: { width: 1200 } },
-          { enhance: 1.2 },
         ],
         { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
       );
@@ -256,36 +256,29 @@ export default function CaptureScreen() {
       setProcessingStep(1);
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Step 2: Adjust contrast and brightness
-      const contrastedImage = await ImageManipulator.manipulateAsync(
-        enhancedImage.uri,
-        [
-          { contrast: 1.2 },
-          { brightness: 1.1 },
-        ],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
-      );
+      // Step 2: Apply brightness and contrast
+      const processedUri = await processImageWithEffects(enhancedImage.uri, {
+        brightness: 1.2, // Increase brightness by 20%
+        contrast: 1.3,   // Increase contrast by 30%
+      });
 
       setProcessingStep(2);
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Step 3: Apply scanner-like effect
-      const scannedImage = await ImageManipulator.manipulateAsync(
-        contrastedImage.uri,
+      // Step 3: Final optimization
+      const finalImage = await ImageManipulator.manipulateAsync(
+        processedUri,
         [
-          { sharpen: 1 },
-          // Add grayscale effect for scanner look
-          { saturate: -1 },
-          // Increase clarity
-          { contrast: 1.1 },
+          { flip: ImageManipulator.FlipType.Vertical },
+          { flip: ImageManipulator.FlipType.Vertical }, // Double flip to normalize
         ],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+        { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
       );
 
       setProcessingStep(3);
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      return scannedImage.uri;
+      return finalImage.uri;
     } catch (error) {
       console.error('Error processing image:', error);
       throw error;
