@@ -3,7 +3,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState, useRef, useEffect } from 'react';
-import * as ImageManipulator from 'expo-image-manipulator';
 import {
   ActivityIndicator,
   Alert,
@@ -23,7 +22,6 @@ import { Colors } from '../../constants/Colors';
 import { BlurView } from 'expo-blur';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
-import { processImage as processImageWithEffects } from '../utils/imageProcessing';
 
 export default function CaptureScreen() {
   const { openDrawer: openDrawerParam } = useLocalSearchParams();
@@ -44,8 +42,6 @@ export default function CaptureScreen() {
     message: string;
     onProceed: () => void;
   } | null>(null);
-
-  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     if (openDrawerParam === 'true') {
@@ -94,7 +90,6 @@ export default function CaptureScreen() {
             style={[
               styles.drawer,
               {
-                backgroundColor: Colors[colorScheme ?? 'light'].card,
                 transform: [{
                   translateY: slideAnim.interpolate({
                     inputRange: [0, 1],
@@ -106,63 +101,33 @@ export default function CaptureScreen() {
           >
             <View style={styles.drawerHandle} />
             <View style={styles.drawerContent}>
-              <View style={styles.drawerHeader}>
-                <Text style={[styles.drawerTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
-                  Choose Option
-                </Text>
-                <Text style={[styles.drawerSubtitle, { color: Colors[colorScheme ?? 'light'].text + '80' }]}>
-                  Select how you want to capture your sample
-                </Text>
-              </View>
+              <TouchableOpacity 
+                style={[styles.drawerButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
+                onPress={() => {
+                  toggleDrawer();
+                  handleCapture();
+                }}
+              >
+                <View style={styles.drawerButtonIcon}>
+                  <Ionicons name="camera" size={20} color="white" />
+                </View>
+                <Text style={styles.drawerButtonText}>Take Photo</Text>
+              </TouchableOpacity>
 
-              <View style={styles.optionsContainer}>
-                <TouchableOpacity 
-                  style={[styles.optionCard, styles.primaryOption]}
-                  onPress={() => {
-                    toggleDrawer();
-                    handleCapture();
-                  }}
-                >
-                  <LinearGradient
-                    colors={['#667eea', '#764ba2']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.optionGradient}
-                  >
-                    <View style={styles.optionIconWrapper}>
-                      <Ionicons name="camera" size={32} color="white" />
-                    </View>
-                    <View style={styles.optionTextContainer}>
-                      <Text style={styles.optionTitle}>Take Photo</Text>
-                      <Text style={styles.optionDescription}>Capture with camera</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
-                  </LinearGradient>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[styles.optionCard, styles.secondaryOption, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}
-                  onPress={() => {
-                    toggleDrawer();
-                    handleGalleryPick();
-                  }}
-                >
-                  <View style={styles.optionContent}>
-                    <View style={[styles.optionIconWrapper, styles.secondaryIconWrapper]}>
-                      <Ionicons name="images" size={32} color={Colors[colorScheme ?? 'light'].tint} />
-                    </View>
-                    <View style={styles.optionTextContainer}>
-                      <Text style={[styles.optionTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
-                        Gallery
-                      </Text>
-                      <Text style={[styles.optionDescription, { color: Colors[colorScheme ?? 'light'].text + '80' }]}>
-                        Choose from photos
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color={Colors[colorScheme ?? 'light'].text + '60'} />
-                  </View>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity 
+                style={[styles.drawerButton, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}
+                onPress={() => {
+                  toggleDrawer();
+                  handleGalleryPick();
+                }}
+              >
+                <View style={[styles.drawerButtonIcon, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+                  <Ionicons name="images" size={20} color={Colors[colorScheme ?? 'light'].tint} />
+                </View>
+                <Text style={[styles.drawerButtonText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                  Choose from Gallery
+                </Text>
+              </TouchableOpacity>
             </View>
           </Animated.View>
         </TouchableOpacity>
@@ -183,39 +148,39 @@ export default function CaptureScreen() {
   };
 
   const CustomAlert = () => {
-    if (!showCustomAlert || !alertData) return null;
+  if (!showCustomAlert || !alertData) return null;
 
-    return (
-      <View style={styles.alertOverlay}>
-        <BlurView intensity={20} style={styles.alertBlur} />
-        <View style={[styles.alertContainer, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
-          <View style={styles.alertIconContainer}>
-            <Ionicons 
-              name={alertData.title.includes('concentrated') ? 'warning' : 'information-circle'} 
-              size={48} 
-              color={Colors[colorScheme ?? 'light'].tint} 
-            />
-          </View>
-          <Text style={[styles.alertTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
-            {alertData.title}
-          </Text>
-          <Text style={[styles.alertMessage, { color: Colors[colorScheme ?? 'light'].text }]}>
-            {alertData.message}
-          </Text>
-          <TouchableOpacity
-            style={[styles.alertButton, styles.alertButtonCancel]}
-            onPress={() => {
-              setShowCustomAlert(false);
-            }}
-          >
-            <Text style={[styles.alertButtonText, { color: Colors[colorScheme ?? 'light'].text }]}>
-              OK
-            </Text>
-          </TouchableOpacity>
+  return (
+    <View style={styles.alertOverlay}>
+      <BlurView intensity={20} style={styles.alertBlur} />
+      <View style={[styles.alertContainer, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
+        <View style={styles.alertIconContainer}>
+          <Ionicons 
+            name={alertData.title.includes('concentrated') ? 'warning' : 'information-circle'} 
+            size={48} 
+            color={Colors[colorScheme ?? 'light'].tint} 
+          />
         </View>
+        <Text style={[styles.alertTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
+          {alertData.title}
+        </Text>
+        <Text style={[styles.alertMessage, { color: Colors[colorScheme ?? 'light'].text }]}>
+          {alertData.message}
+        </Text>
+        <TouchableOpacity
+          style={[styles.alertButton, styles.alertButtonCancel]}
+          onPress={() => {
+            setShowCustomAlert(false);
+          }}
+        >
+          <Text style={[styles.alertButtonText, { color: Colors[colorScheme ?? 'light'].text }]}>
+            OK
+          </Text>
+        </TouchableOpacity>
       </View>
-    );
-  };
+    </View>
+  );
+};
 
   const validateColor = async (imageUri: string) => {
     try {
@@ -262,34 +227,6 @@ export default function CaptureScreen() {
     }
   };
 
-  const processImage = async (imageUri: string) => {
-    try {
-      setIsProcessing(true);
-
-      // Enhance image quality
-      const enhancedImage = await ImageManipulator.manipulateAsync(
-        imageUri,
-        [
-          { resize: { width: 1200 } },
-        ],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
-      );
-
-      // Apply brightness and contrast effects
-      const processedUri = await processImageWithEffects(enhancedImage.uri, {
-        brightness: 1.2, // Increase brightness by 20%
-        contrast: 1.3,   // Increase contrast by 30%
-      });
-
-      return processedUri;
-    } catch (error) {
-      console.error('Error processing image:', error);
-      throw error;
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   const handleCapture = async () => {
     if (isCapturing) return;
     
@@ -303,27 +240,33 @@ export default function CaptureScreen() {
         return;
       }
 
+      // Add a small delay to ensure camera is ready
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // Launch camera with optimized options
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 1,
-        exif: false,
-        base64: false,
+        quality: 0.8, // Slightly reduced quality for better performance
+        exif: false, // Disable EXIF data to reduce memory usage
+        base64: false, // Disable base64 to reduce memory usage
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
       });
+
+      // Add a small delay after camera closes
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       if (!result.canceled && result.assets[0]) {
         const imageUri = result.assets[0].uri;
         console.log('Image captured:', imageUri);
+        setPreviewUri(imageUri);
         
-        // Process the image
-        const processedUri = await processImage(imageUri);
-        setPreviewUri(processedUri);
+        // Add a small delay before validation
+        await new Promise(resolve => setTimeout(resolve, 200));
         
         try {
           // Validate color before proceeding
-          const validationResult = await validateColor(processedUri);
+          const validationResult = await validateColor(imageUri);
           
           if (validationResult.status === 'error') {
             setAlertData({
@@ -334,7 +277,7 @@ export default function CaptureScreen() {
                   router.push({
                     pathname: '/(tabs)/analysis',
                     params: { 
-                      imageUri: processedUri,
+                      imageUri,
                       timestamp: new Date().getTime(),
                       isNewCapture: 'true'
                     }
@@ -349,7 +292,7 @@ export default function CaptureScreen() {
               router.push({
                 pathname: '/(tabs)/analysis',
                 params: { 
-                  imageUri: processedUri,
+                  imageUri,
                   timestamp: new Date().getTime(),
                   isNewCapture: 'true'
                 }
@@ -373,7 +316,10 @@ export default function CaptureScreen() {
         [{ text: 'OK' }]
       );
     } finally {
-      setIsCapturing(false);
+      // Add a small delay before resetting the capturing state
+      setTimeout(() => {
+        setIsCapturing(false);
+      }, 300);
     }
   };
 
@@ -395,13 +341,10 @@ export default function CaptureScreen() {
       if (!result.canceled && result.assets[0]) {
         const imageUri = result.assets[0].uri;
         console.log('Image selected from gallery:', imageUri);
-        
-        // Process the image
-        const processedUri = await processImage(imageUri);
-        setPreviewUri(processedUri);
+        setPreviewUri(imageUri);
 
         // Validate color before proceeding
-        const validationResult = await validateColor(processedUri);
+        const validationResult = await validateColor(imageUri);
         
         if (validationResult.status === 'error') {
           setAlertData({
@@ -412,7 +355,7 @@ export default function CaptureScreen() {
                 router.push({
                   pathname: '/(tabs)/analysis',
                   params: { 
-                    imageUri: processedUri,
+                    imageUri,
                     timestamp: new Date().getTime(),
                     isNewCapture: 'true'
                   },
@@ -427,7 +370,7 @@ export default function CaptureScreen() {
             router.push({
               pathname: '/(tabs)/analysis',
               params: { 
-                imageUri: processedUri,
+                imageUri,
                 timestamp: new Date().getTime(),
                 isNewCapture: 'true'
               },
@@ -447,33 +390,11 @@ export default function CaptureScreen() {
     useCallback(() => {
       const timeout = setTimeout(() => {
         openDrawer();
-      }, 350);
+      }, 350); // 350ms delay for smoothness
 
       return () => clearTimeout(timeout);
     }, [])
   );
-
-  // Simplified ProcessingOverlay component
-  const ProcessingOverlay = () => {
-    if (!isProcessing) return null;
-
-    return (
-      <View style={styles.processingOverlay}>
-        <BlurView intensity={20} style={StyleSheet.absoluteFill} />
-        <View style={[styles.processingContainer, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
-          <View style={styles.processingSpinner}>
-            <ActivityIndicator size="large" color={Colors[colorScheme ?? 'light'].tint} />
-          </View>
-          <Text style={[styles.processingTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
-            Processing Image
-          </Text>
-          <Text style={[styles.processingMessage, { color: Colors[colorScheme ?? 'light'].text }]}>
-            Enhancing quality and adjusting colors...
-          </Text>
-        </View>
-      </View>
-    );
-  };
 
   return (
     <View style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
@@ -501,100 +422,78 @@ export default function CaptureScreen() {
         bounces={true}
       >
         <View style={styles.mainContent}>
-          {/* Hero Preview Section */}
-          <View style={styles.heroSection}>
-            <View style={[styles.previewCard, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
+          <View style={styles.previewSection}>
+            <View style={styles.previewContainer}>
               {previewUri ? (
-                <View style={styles.imageContainer}>
-                  <Image source={{ uri: previewUri }} style={styles.previewImage} />
-                  <View style={styles.imageOverlay}>
-                    <TouchableOpacity style={styles.retakeButton} onPress={toggleDrawer}>
-                      <Ionicons name="refresh" size={20} color="white" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
+                <Image source={{ uri: previewUri }} style={styles.previewImage} />
               ) : (
-                <View style={styles.emptyState}>
-                  <View style={styles.emptyIconContainer}>
-                    <LinearGradient
-                      colors={['#667eea', '#764ba2']}
-                      style={styles.emptyIconGradient}
-                    >
-                      <Ionicons name="camera-outline" size={64} color="white" />
-                    </LinearGradient>
+                <View style={styles.previewPlaceholder}>
+                  <View style={styles.previewIconContainer}>
+                    <Ionicons name="camera" size={48} color={Colors[colorScheme ?? 'light'].tint} />
                   </View>
-                  <Text style={[styles.emptyTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
-                    Ready to Capture
-                  </Text>
-                  <Text style={[styles.emptySubtitle, { color: Colors[colorScheme ?? 'light'].text }]}>
-                    Take a photo or select from gallery to begin analysis
+                  <Text style={[styles.previewText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                    No image selected
                   </Text>
                 </View>
               )}
             </View>
           </View>
 
-          {/* Action Button */}
-          <TouchableOpacity
-            style={styles.primaryActionButton}
-            onPress={toggleDrawer}
-            disabled={isCapturing}
-          >
-            <LinearGradient
-              colors={['#667eea', '#764ba2']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.actionButtonGradient}
+          <View style={styles.actionSection}>
+            <TouchableOpacity
+              style={[styles.captureButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
+              onPress={toggleDrawer}
+              disabled={isCapturing}
             >
               {isCapturing ? (
                 <ActivityIndicator size="large" color="white" />
               ) : (
                 <>
-                  <Ionicons name="add-circle" size={28} color="white" />
-                  <Text style={styles.actionButtonText}>Start Capture</Text>
+                  <View style={styles.buttonIconContainer}>
+                    <Ionicons name="camera" size={28} color="white" />
+                  </View>
+                  <Text style={styles.buttonText}>Capture</Text>
                 </>
               )}
-            </LinearGradient>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          </View>
 
-          {/* Tips Section */}
-          <View style={[styles.tipsContainer, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
+          <View style={[styles.tipsSection, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
             <View style={styles.tipsHeader}>
-              <View style={styles.tipsIconContainer}>
-                <Ionicons name="lightbulb" size={24} color={Colors[colorScheme ?? 'light'].tint} />
-              </View>
-              <View>
-                <Text style={[styles.tipsTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
-                  Capture Tips
-                </Text>
-                <Text style={[styles.tipsSubtitle, { color: Colors[colorScheme ?? 'light'].text }]}>
-                  For optimal results
-                </Text>
-              </View>
+              <Ionicons name="bulb" size={24} color={Colors[colorScheme ?? 'light'].tint} />
+              <Text style={[styles.tipsTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
+                Tips for Best Results
+              </Text>
             </View>
-            
-            <View style={styles.tipsContent}>
-              {[
-                { icon: 'sunny-outline', text: 'Use good lighting' },
-                { icon: 'resize-outline', text: 'Fill the frame completely' },
-                { icon: 'color-palette-outline', text: 'Focus on color area' },
-                { icon: 'scan-outline', text: 'Hold camera steady' }
-              ].map((tip, index) => (
-                <View key={index} style={styles.tipItem}>
-                  <View style={[styles.tipIconWrapper, { backgroundColor: Colors[colorScheme ?? 'light'].tint + '20' }]}>
-                    <Ionicons name={tip.icon} size={18} color={Colors[colorScheme ?? 'light'].tint} />
-                  </View>
-                  <Text style={[styles.tipText, { color: Colors[colorScheme ?? 'light'].text }]}>
-                    {tip.text}
-                  </Text>
-                </View>
-              ))}
+            <View style={styles.tipsGrid}>
+              <View style={styles.tipCard}>
+                <Ionicons name="sunny" size={24} color={Colors[colorScheme ?? 'light'].tint} />
+                <Text style={[styles.tipText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                  Good lighting conditions
+                </Text>
+              </View>
+              <View style={styles.tipCard}>
+                <Ionicons name="crop" size={24} color={Colors[colorScheme ?? 'light'].tint} />
+                <Text style={[styles.tipText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                  Focus on color area
+                </Text>
+              </View>
+              <View style={styles.tipCard}>
+                <Ionicons name="color-palette" size={24} color={Colors[colorScheme ?? 'light'].tint} />
+                <Text style={[styles.tipText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                  Fill frame with color
+                </Text>
+              </View>
+              <View style={styles.tipCard}>
+                <Ionicons name="grid" size={24} color={Colors[colorScheme ?? 'light'].tint} />
+                <Text style={[styles.tipText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                  Center the sample
+                </Text>
+              </View>
             </View>
           </View>
         </View>
       </ScrollView>
-      
-      <ProcessingOverlay />
       <CustomAlert />
       <BottomDrawer />
     </View>
@@ -604,15 +503,19 @@ export default function CaptureScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    position: 'relative', // Ensure overlay positions correctly
   },
   header: {
     padding: 20,
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
+    position: 'relative',
+    overflow: 'hidden',
   },
   headerContent: {
     gap: 8,
+    zIndex: 1,
   },
   headerTitleContainer: {
     flexDirection: 'row',
@@ -645,241 +548,128 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 24,
   },
-  heroSection: {
-    marginTop: -30,
+  previewSection: {
+    marginTop: -40,
     zIndex: 1,
   },
-  previewCard: {
-    borderRadius: 28,
+  previewContainer: {
+    height: 300,
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
+    borderRadius: 24,
     overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(59, 130, 246, 0.1)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 12,
-    minHeight: 320,
-  },
-  imageContainer: {
-    position: 'relative',
-    height: 320,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
   },
   previewImage: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
+    resizeMode: 'contain',
   },
-  imageOverlay: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-  },
-  retakeButton: {
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    padding: 12,
-    borderRadius: 24,
-    backdropFilter: 'blur(10px)',
-  },
-  emptyState: {
+  previewPlaceholder: {
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 40,
-    minHeight: 320,
+    gap: 16,
+    padding: 32,
   },
-  emptyIconContainer: {
-    marginBottom: 24,
-  },
-  emptyIconGradient: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+  previewIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  emptyTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  emptySubtitle: {
+  previewText: {
     fontSize: 16,
-    opacity: 0.7,
     textAlign: 'center',
-    lineHeight: 22,
+    opacity: 0.7,
   },
-  primaryActionButton: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#667eea',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
+  actionSection: {
+    gap: 16,
   },
-  actionButtonGradient: {
+  captureButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 24,
-    gap: 12,
+    padding: 12, // smaller padding
+    borderRadius: 14, // slightly less rounded
+    gap: 10,
+    backgroundColor: '#2563EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.10,
+    shadowRadius: 6,
+    elevation: 4,
+    minHeight: 44,
+    minWidth: 120,
   },
-  actionButtonText: {
-    fontSize: 18,
-    fontWeight: '700',
+  buttonIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 6,
+  },
+  buttonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0.2,
     color: 'white',
-    letterSpacing: 0.5,
   },
-  tipsContainer: {
-    borderRadius: 20,
+  tipsSection: {
+    borderRadius: 24,
     padding: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   tipsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
     marginBottom: 20,
-  },
-  tipsIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(102, 126, 234, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   tipsTitle: {
     fontSize: 20,
     fontWeight: '700',
-    marginBottom: 2,
+    letterSpacing: 0.3,
   },
-  tipsSubtitle: {
-    fontSize: 14,
-    opacity: 0.7,
-  },
-  tipsContent: {
-    gap: 16,
-  },
-  tipItem: {
+  tipsGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 16,
-    paddingVertical: 8,
   },
-  tipIconWrapper: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
+  tipCard: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: 'rgba(59, 130, 246, 0.05)',
+    borderRadius: 16,
+    padding: 16,
     alignItems: 'center',
+    gap: 12,
   },
   tipText: {
-    fontSize: 16,
-    fontWeight: '500',
-    flex: 1,
-  },
-  // Drawer styles
-  drawerOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'flex-end',
-  },
-  drawer: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingTop: 12,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  drawerHandle: {
-    width: 48,
-    height: 4,
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 24,
-  },
-  drawerContent: {
-    paddingHorizontal: 24,
-  },
-  drawerHeader: {
-    alignItems: 'center',
-    marginBottom: 28,
-  },
-  drawerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  drawerSubtitle: {
-    fontSize: 16,
+    fontSize: 15,
     textAlign: 'center',
+    lineHeight: 20,
+    letterSpacing: 0.2,
   },
-  optionsContainer: {
-    gap: 16,
-  },
-  optionCard: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  primaryOption: {
-    marginBottom: 8,
-  },
-  secondaryOption: {
-    borderWidth: 2,
-    borderColor: 'rgba(0,0,0,0.1)',
-  },
-  optionGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    gap: 16,
-  },
-  optionContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    gap: 16,
-  },
-  optionIconWrapper: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  secondaryIconWrapper: {
-    backgroundColor: 'rgba(102, 126, 234, 0.1)',
-  },
-  optionTextContainer: {
-    flex: 1,
-  },
-  optionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: 'white',
-    marginBottom: 2,
-  },
-  optionDescription: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-  },
-  // Alert styles
   alertOverlay: {
     position: 'absolute',
     top: 0,
@@ -889,7 +679,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.25)', // Add dimming effect
   },
   alertBlur: {
     position: 'absolute',
@@ -905,23 +695,26 @@ const styles = StyleSheet.create({
     padding: 24,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
     shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   alertIconContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
   },
   alertTitle: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: '600',
     textAlign: 'center',
     marginBottom: 8,
   },
@@ -930,7 +723,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 22,
-    opacity: 0.8,
   },
   alertButton: {
     width: '100%',
@@ -938,57 +730,75 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
   },
   alertButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },
   alertButtonCancel: {
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
   },
   alertButtonProceed: {
-    backgroundColor: '#667eea',
+    backgroundColor: '#3B82F6',
   },
   alertButtonTextProceed: {
+    fontSize: 16,
+    fontWeight: '600',
     color: 'white',
   },
-  // Processing overlay styles
-  processingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+  drawerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  drawer: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  drawerHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  drawerContent: {
+    paddingHorizontal: 20,
+    gap: 16,
+  },
+  drawerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10, // smaller padding
+    borderRadius: 12,
+    gap: 10,
+    marginBottom: 4,
+    minHeight: 40,
+  },
+  drawerButtonIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1000,
-    backgroundColor: 'rgba(0,0,0,0.4)',
   },
-  processingContainer: {
-    width: '85%',
-    maxWidth: 400,
-    borderRadius: 20,
-    padding: 24,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
+  drawerButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'white',
   },
-  processingSpinner: {
-    marginBottom: 24,
-  },
-  processingTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  processingMessage: {
-    fontSize: 16,
-    textAlign: 'center',
-    opacity: 0.8,
-    lineHeight: 22,
-  }
 });
