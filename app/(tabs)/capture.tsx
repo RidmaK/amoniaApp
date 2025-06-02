@@ -243,17 +243,42 @@ export default function CaptureScreen() {
       setIsProcessing(true);
       setProcessingStep(0);
 
-      // Process image with brightness and contrast only
+      // Step 1: Enhance image quality
       await new Promise(resolve => setTimeout(resolve, 500));
-      const processedUri = await processImageWithEffects(imageUri, {
+      const enhancedImage = await ImageManipulator.manipulateAsync(
+        imageUri,
+        [
+          { resize: { width: 1200 } },
+        ],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      
+      setProcessingStep(1);
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Step 2: Apply brightness and contrast
+      const processedUri = await processImageWithEffects(enhancedImage.uri, {
         brightness: 1.2, // Increase brightness by 20%
-        contrast: 1.3   // Increase contrast by 30%
+        contrast: 1.3,   // Increase contrast by 30%
       });
+
+      setProcessingStep(2);
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Step 3: Final optimization
+      const finalImage = await ImageManipulator.manipulateAsync(
+        processedUri,
+        [
+          { flip: ImageManipulator.FlipType.Vertical },
+          { flip: ImageManipulator.FlipType.Vertical }, // Double flip to normalize
+        ],
+        { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
+      );
 
       setProcessingStep(3);
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      return processedUri;
+      return finalImage.uri;
     } catch (error) {
       console.error('Error processing image:', error);
       throw error;
@@ -354,18 +379,8 @@ export default function CaptureScreen() {
     try {
       setIsCapturing(true);
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
       if (status !== 'granted') {
-        setAlertData({
-          title: 'Permission Required',
-          message: 'Please allow access to your photo library to select images.',
-          onProceed: () => {
-            setTimeout(() => {
-              ImagePicker.requestMediaLibraryPermissionsAsync();
-            }, 500);
-          }
-        });
-        setShowCustomAlert(true);
+        Alert.alert('Permission Denied', 'Photo library permission is required to select images.');
         return;
       }
 
@@ -373,80 +388,54 @@ export default function CaptureScreen() {
         allowsEditing: true,
         aspect: [4, 3],
         quality: 1,
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
       });
 
       if (!result.canceled && result.assets[0]) {
         const imageUri = result.assets[0].uri;
         console.log('Image selected from gallery:', imageUri);
         
-        try {
-          // Process the image
-          const processedUri = await processImage(imageUri);
-          setPreviewUri(processedUri);
+        // Process the image
+        const processedUri = await processImage(imageUri);
+        setPreviewUri(processedUri);
 
-          // Validate color before proceeding
-          const validationResult = await validateColor(processedUri);
-          
-          if (validationResult.status === 'error') {
-            setAlertData({
-              title: validationResult.message,
-              message: validationResult.action,
-              onProceed: () => {
-                setTimeout(() => {
-                  router.push({
-                    pathname: '/(tabs)/analysis',
-                    params: { 
-                      imageUri: processedUri,
-                      timestamp: new Date().getTime(),
-                      isNewCapture: 'true'
-                    },
-                  });
-                }, 500);
-              }
-            });
-            setShowCustomAlert(true);
-          } else {
-            // Color is valid, proceed to analysis
-            setTimeout(() => {
-              router.push({
-                pathname: '/(tabs)/analysis',
-                params: { 
-                  imageUri: processedUri,
-                  timestamp: new Date().getTime(),
-                  isNewCapture: 'true'
-                },
-              });
-            }, 500);
-          }
-        } catch (processingError) {
-          console.error('Error processing image:', processingError);
+        // Validate color before proceeding
+        const validationResult = await validateColor(processedUri);
+        
+        if (validationResult.status === 'error') {
           setAlertData({
-            title: 'Processing Error',
-            message: 'There was an error processing your image. Please try selecting a different image or ensure the image is not corrupted.',
-            onProceed: () => setShowCustomAlert(false)
+            title: validationResult.message,
+            message: validationResult.action,
+            onProceed: () => {
+              setTimeout(() => {
+                router.push({
+                  pathname: '/(tabs)/analysis',
+                  params: { 
+                    imageUri: processedUri,
+                    timestamp: new Date().getTime(),
+                    isNewCapture: 'true'
+                  },
+                });
+              }, 500);
+            }
           });
           setShowCustomAlert(true);
+        } else {
+          // Color is valid, proceed to analysis
+          setTimeout(() => {
+            router.push({
+              pathname: '/(tabs)/analysis',
+              params: { 
+                imageUri: processedUri,
+                timestamp: new Date().getTime(),
+                isNewCapture: 'true'
+              },
+            });
+          }, 500);
         }
-      } else if (result.canceled) {
-        // User canceled image selection - no need to show error
-        console.log('Image selection canceled by user');
-      } else {
-        setAlertData({
-          title: 'Invalid Image',
-          message: 'Please select a valid image from your gallery.',
-          onProceed: () => setShowCustomAlert(false)
-        });
-        setShowCustomAlert(true);
       }
     } catch (error) {
-      console.error('Gallery error:', error);
-      setAlertData({
-        title: 'Gallery Access Error',
-        message: error instanceof Error ? error.message : 'Unable to access photo gallery. Please check your permissions and try again.',
-        onProceed: () => setShowCustomAlert(false)
-      });
-      setShowCustomAlert(true);
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image from gallery. Please try again.');
     } finally {
       setIsCapturing(false);
     }
@@ -551,65 +540,16 @@ export default function CaptureScreen() {
       >
         <View style={styles.mainContent}>
           <View style={styles.previewSection}>
-            <View style={[
-              styles.previewContainer,
-              { backgroundColor: Colors[colorScheme ?? 'light'].card }
-            ]}>
+            <View style={styles.previewContainer}>
               {previewUri ? (
-                <View style={styles.previewImageWrapper}>
-                  <Image source={{ uri: previewUri }} style={styles.previewImage} />
-                  <LinearGradient
-                    colors={['rgba(0,0,0,0.3)', 'transparent', 'transparent', 'rgba(0,0,0,0.3)']}
-                    style={styles.previewGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 0, y: 1 }}
-                  />
-                  <View style={styles.previewOverlay}>
-                    <TouchableOpacity 
-                      style={styles.previewAction}
-                      onPress={() => setPreviewUri(null)}
-                    >
-                      <Ionicons name="close-circle" size={28} color="white" />
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={styles.previewAction}
-                      onPress={() => handleCapture()}
-                    >
-                      <Ionicons name="camera" size={28} color="white" />
-                    </TouchableOpacity>
-                  </View>
-                  <View style={styles.previewInfo}>
-                    <BlurView intensity={20} style={styles.previewInfoBlur}>
-                      <Ionicons name="information-circle" size={20} color="white" />
-                      <Text style={styles.previewInfoText}>
-                        Tap to retake or proceed with analysis
-                      </Text>
-                    </BlurView>
-                  </View>
-                </View>
+                <Image source={{ uri: previewUri }} style={styles.previewImage} />
               ) : (
                 <View style={styles.previewPlaceholder}>
-                  <View style={[
-                    styles.previewIconContainer,
-                    { backgroundColor: `${Colors[colorScheme ?? 'light'].tint}20` }
-                  ]}>
-                    <Ionicons 
-                      name="camera" 
-                      size={48} 
-                      color={Colors[colorScheme ?? 'light'].tint} 
-                    />
+                  <View style={styles.previewIconContainer}>
+                    <Ionicons name="camera" size={48} color={Colors[colorScheme ?? 'light'].tint} />
                   </View>
-                  <Text style={[
-                    styles.previewText,
-                    { color: Colors[colorScheme ?? 'light'].text }
-                  ]}>
+                  <Text style={[styles.previewText, { color: Colors[colorScheme ?? 'light'].text }]}>
                     No image selected
-                  </Text>
-                  <Text style={[
-                    styles.previewSubtext,
-                    { color: Colors[colorScheme ?? 'light'].tabIconDefault }
-                  ]}>
-                    Take a photo or choose from gallery
                   </Text>
                 </View>
               )}
@@ -729,98 +669,45 @@ const styles = StyleSheet.create({
   previewSection: {
     marginTop: -40,
     zIndex: 1,
-    paddingHorizontal: 20,
   },
   previewContainer: {
-    height: 360,
+    height: 300,
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
     borderRadius: 24,
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: 'rgba(59, 130, 246, 0.1)',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 4,
     },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 8,
-  },
-  previewImageWrapper: {
-    width: '100%',
-    height: '100%',
-    position: 'relative',
   },
   previewImage: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
-  },
-  previewGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1,
-  },
-  previewOverlay: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    flexDirection: 'row',
-    gap: 12,
-    zIndex: 2,
-  },
-  previewAction: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  previewInfo: {
-    position: 'absolute',
-    bottom: 16,
-    left: 16,
-    right: 16,
-    zIndex: 2,
-  },
-  previewInfoBlur: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-  },
-  previewInfoText: {
-    color: 'white',
-    fontSize: 14,
-    flex: 1,
+    resizeMode: 'contain',
   },
   previewPlaceholder: {
     alignItems: 'center',
-    gap: 12,
+    gap: 16,
     padding: 32,
   },
   previewIconContainer: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   previewText: {
-    fontSize: 18,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  previewSubtext: {
-    fontSize: 14,
+    fontSize: 16,
     textAlign: 'center',
     opacity: 0.7,
   },
