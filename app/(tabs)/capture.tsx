@@ -24,7 +24,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
 
 export default function CaptureScreen() {
-  const { openDrawer: openDrawerParam } = useLocalSearchParams();
+  const { openDrawer: openDrawerParam } = useLocalSearchParams<{ openDrawer: string }>();
   const [showDrawer, setShowDrawer] = useState(false);
 
   const colorScheme = useColorScheme() as 'light' | 'dark' | null;
@@ -45,7 +45,9 @@ export default function CaptureScreen() {
 
   useEffect(() => {
     if (openDrawerParam === 'true') {
-      setShowDrawer(true);
+      setTimeout(() => {
+        openDrawer();
+      }, 100);
     }
   }, [openDrawerParam]);
 
@@ -388,12 +390,13 @@ export default function CaptureScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      const timeout = setTimeout(() => {
-        openDrawer();
-      }, 350); // 350ms delay for smoothness
-
-      return () => clearTimeout(timeout);
-    }, [])
+      if (openDrawerParam === 'true') {
+        const timeout = setTimeout(() => {
+          openDrawer();
+        }, 350);
+        return () => clearTimeout(timeout);
+      }
+    }, [openDrawerParam])
   );
 
   return (
