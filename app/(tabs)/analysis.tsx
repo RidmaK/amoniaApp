@@ -71,6 +71,14 @@ type TestResult = {
       b: number;
     };
   };
+  original_color: {
+    hex: string;
+    rgb: {
+      r: number;
+      g: number;
+      b: number;
+    };
+  };
   history: Array<{
     concentration: number;
     color_hex: string;
@@ -105,7 +113,9 @@ type TestResult = {
     reagentLot: string;
   };
   saved_image: string;
+  enhanced_image: string;
   success: boolean;
+  distance?: number;
 };
 
 const defaultResult: TestResult = {
@@ -125,6 +135,10 @@ const defaultResult: TestResult = {
     recoveryRate: 0,
   },
   color: {
+    hex: '#000000',
+    rgb: { r: 0, g: 0, b: 0 },
+  },
+  original_color: {
     hex: '#000000',
     rgb: { r: 0, g: 0, b: 0 },
   },
@@ -150,6 +164,7 @@ const defaultResult: TestResult = {
     reagentLot: 'N/A',
   },
   saved_image: '',
+  enhanced_image: '',
   success: false,
 };
 
@@ -165,6 +180,7 @@ export default function AnalysisScreen() {
   const [result, setResult] = useState<TestResult>(defaultResult);
   const [isServerOnline, setIsServerOnline] = useState<boolean | null>(null);
   const [lastServerCheck, setLastServerCheck] = useState<Date | null>(null);
+  const [showOriginal, setShowOriginal] = useState(false);
 
   // Monitor server connection status
   useEffect(() => {
@@ -234,8 +250,6 @@ export default function AnalysisScreen() {
       analyzeImage();
     }
   }, [imageUri]);
-
-  
 
   const analyzeImage = async () => {
     console.log('Starting analyzeImage with URI:', imageUri);
@@ -327,10 +341,13 @@ export default function AnalysisScreen() {
             method: data.saved_image || 'N/A',
           },
           color: data.color,
+          original_color: data.original_color,
           history: data.history,
           chart: data.chart,
           saved_image: data.saved_image,
+          enhanced_image: data.enhanced_image,
           success: data.success,
+          distance: data.distance,
         }));
       } else {
         throw new Error('Invalid response format from server');
@@ -639,7 +656,28 @@ export default function AnalysisScreen() {
         <View style={styles.section}>
           <View style={[styles.imageContainer, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
             {imageUri && (
-              <Image source={{ uri: imageUri }} style={styles.image} />
+              <>
+                <Image 
+                  source={{ uri: showOriginal ? imageUri : (result.enhanced_image || imageUri) }} 
+                  style={styles.image} 
+                  resizeMode="contain"
+                />
+                {result.enhanced_image && (
+                  <TouchableOpacity
+                    style={styles.toggleImageButton}
+                    onPress={() => setShowOriginal(prev => !prev)}
+                  >
+                    <Ionicons 
+                      name={showOriginal ? "eye-outline" : "eye"} 
+                      size={20} 
+                      color="white" 
+                    />
+                    <Text style={styles.toggleImageText}>
+                      {showOriginal ? 'Show Enhanced' : 'Show Original'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </>
             )}
           </View>
         </View>
@@ -1191,5 +1229,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     transform: [{ translateX: 8 }],
+  },
+  toggleImageButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  toggleImageText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
