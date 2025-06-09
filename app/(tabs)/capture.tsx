@@ -3,7 +3,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState, useRef, useEffect } from 'react';
-import * as ImageManipulator from 'expo-image-manipulator';
 import {
   ActivityIndicator,
   Alert,
@@ -23,10 +22,9 @@ import { Colors } from '../../constants/Colors';
 import { BlurView } from 'expo-blur';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
-import { processImage as processImageWithEffects } from '../utils/imageProcessing';
 
 export default function CaptureScreen() {
-  const { openDrawer: openDrawerParam } = useLocalSearchParams();
+  const { openDrawer: openDrawerParam } = useLocalSearchParams<{ openDrawer: string }>();
   const [showDrawer, setShowDrawer] = useState(false);
 
   const colorScheme = useColorScheme() as 'light' | 'dark' | null;
@@ -45,18 +43,11 @@ export default function CaptureScreen() {
     onProceed: () => void;
   } | null>(null);
 
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [processingStep, setProcessingStep] = useState(0);
-  const processingSteps = [
-    'Enhancing image quality...',
-    'Adjusting contrast...',
-    'Applying scanner effect...',
-    'Optimizing result...'
-  ];
-
   useEffect(() => {
     if (openDrawerParam === 'true') {
-      setShowDrawer(true);
+      setTimeout(() => {
+        openDrawer();
+      }, 100);
     }
   }, [openDrawerParam]);
 
@@ -238,31 +229,6 @@ export default function CaptureScreen() {
     }
   };
 
-  const processImage = async (imageUri: string) => {
-    try {
-      setIsProcessing(true);
-      setProcessingStep(0);
-
-      // Process image with brightness and contrast only
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const processedUri = await processImageWithEffects(imageUri, {
-        brightness: 1.2, // Increase brightness by 20%
-        contrast: 1.3   // Increase contrast by 30%
-      });
-
-      setProcessingStep(3);
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      return processedUri;
-    } catch (error) {
-      console.error('Error processing image:', error);
-      throw error;
-    } finally {
-      setIsProcessing(false);
-      setProcessingStep(0);
-    }
-  };
-
   const handleCapture = async () => {
     if (isCapturing) return;
     
@@ -276,27 +242,33 @@ export default function CaptureScreen() {
         return;
       }
 
+      // Add a small delay to ensure camera is ready
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // Launch camera with optimized options
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 1, // Use max quality since we'll process it later
-        exif: false,
-        base64: false,
+        quality: 0.8, // Slightly reduced quality for better performance
+        exif: false, // Disable EXIF data to reduce memory usage
+        base64: false, // Disable base64 to reduce memory usage
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
       });
+
+      // Add a small delay after camera closes
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       if (!result.canceled && result.assets[0]) {
         const imageUri = result.assets[0].uri;
         console.log('Image captured:', imageUri);
+        setPreviewUri(imageUri);
         
-        // Process the image
-        const processedUri = await processImage(imageUri);
-        setPreviewUri(processedUri);
+        // Add a small delay before validation
+        await new Promise(resolve => setTimeout(resolve, 200));
         
         try {
           // Validate color before proceeding
-          const validationResult = await validateColor(processedUri);
+          const validationResult = await validateColor(imageUri);
           
           if (validationResult.status === 'error') {
             setAlertData({
@@ -307,7 +279,7 @@ export default function CaptureScreen() {
                   router.push({
                     pathname: '/(tabs)/analysis',
                     params: { 
-                      imageUri: processedUri,
+                      imageUri,
                       timestamp: new Date().getTime(),
                       isNewCapture: 'true'
                     }
@@ -322,7 +294,7 @@ export default function CaptureScreen() {
               router.push({
                 pathname: '/(tabs)/analysis',
                 params: { 
-                  imageUri: processedUri,
+                  imageUri,
                   timestamp: new Date().getTime(),
                   isNewCapture: 'true'
                 }
@@ -346,7 +318,10 @@ export default function CaptureScreen() {
         [{ text: 'OK' }]
       );
     } finally {
-      setIsCapturing(false);
+      // Add a small delay before resetting the capturing state
+      setTimeout(() => {
+        setIsCapturing(false);
+      }, 300);
     }
   };
 
@@ -354,18 +329,8 @@ export default function CaptureScreen() {
     try {
       setIsCapturing(true);
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
       if (status !== 'granted') {
-        setAlertData({
-          title: 'Permission Required',
-          message: 'Please allow access to your photo library to select images.',
-          onProceed: () => {
-            setTimeout(() => {
-              ImagePicker.requestMediaLibraryPermissionsAsync();
-            }, 500);
-          }
-        });
-        setShowCustomAlert(true);
+        Alert.alert('Permission Denied', 'Photo library permission is required to select images.');
         return;
       }
 
@@ -373,80 +338,51 @@ export default function CaptureScreen() {
         allowsEditing: true,
         aspect: [4, 3],
         quality: 1,
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
       });
 
       if (!result.canceled && result.assets[0]) {
         const imageUri = result.assets[0].uri;
         console.log('Image selected from gallery:', imageUri);
-        
-        try {
-          // Process the image
-          const processedUri = await processImage(imageUri);
-          setPreviewUri(processedUri);
+        setPreviewUri(imageUri);
 
-          // Validate color before proceeding
-          const validationResult = await validateColor(processedUri);
-          
-          if (validationResult.status === 'error') {
-            setAlertData({
-              title: validationResult.message,
-              message: validationResult.action,
-              onProceed: () => {
-                setTimeout(() => {
-                  router.push({
-                    pathname: '/(tabs)/analysis',
-                    params: { 
-                      imageUri: processedUri,
-                      timestamp: new Date().getTime(),
-                      isNewCapture: 'true'
-                    },
-                  });
-                }, 500);
-              }
-            });
-            setShowCustomAlert(true);
-          } else {
-            // Color is valid, proceed to analysis
-            setTimeout(() => {
-              router.push({
-                pathname: '/(tabs)/analysis',
-                params: { 
-                  imageUri: processedUri,
-                  timestamp: new Date().getTime(),
-                  isNewCapture: 'true'
-                },
-              });
-            }, 500);
-          }
-        } catch (processingError) {
-          console.error('Error processing image:', processingError);
+        // Validate color before proceeding
+        const validationResult = await validateColor(imageUri);
+        
+        if (validationResult.status === 'error') {
           setAlertData({
-            title: 'Processing Error',
-            message: 'There was an error processing your image. Please try selecting a different image or ensure the image is not corrupted.',
-            onProceed: () => setShowCustomAlert(false)
+            title: validationResult.message,
+            message: validationResult.action,
+            onProceed: () => {
+              setTimeout(() => {
+                router.push({
+                  pathname: '/(tabs)/analysis',
+                  params: { 
+                    imageUri,
+                    timestamp: new Date().getTime(),
+                    isNewCapture: 'true'
+                  },
+                });
+              }, 500);
+            }
           });
           setShowCustomAlert(true);
+        } else {
+          // Color is valid, proceed to analysis
+          setTimeout(() => {
+            router.push({
+              pathname: '/(tabs)/analysis',
+              params: { 
+                imageUri,
+                timestamp: new Date().getTime(),
+                isNewCapture: 'true'
+              },
+            });
+          }, 500);
         }
-      } else if (result.canceled) {
-        // User canceled image selection - no need to show error
-        console.log('Image selection canceled by user');
-      } else {
-        setAlertData({
-          title: 'Invalid Image',
-          message: 'Please select a valid image from your gallery.',
-          onProceed: () => setShowCustomAlert(false)
-        });
-        setShowCustomAlert(true);
       }
     } catch (error) {
-      console.error('Gallery error:', error);
-      setAlertData({
-        title: 'Gallery Access Error',
-        message: error instanceof Error ? error.message : 'Unable to access photo gallery. Please check your permissions and try again.',
-        onProceed: () => setShowCustomAlert(false)
-      });
-      setShowCustomAlert(true);
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image from gallery. Please try again.');
     } finally {
       setIsCapturing(false);
     }
@@ -454,75 +390,14 @@ export default function CaptureScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      const timeout = setTimeout(() => {
-        openDrawer();
-      }, 350); // 350ms delay for smoothness
-
-      return () => clearTimeout(timeout);
-    }, [])
+      if (openDrawerParam === 'true') {
+        const timeout = setTimeout(() => {
+          openDrawer();
+        }, 350);
+        return () => clearTimeout(timeout);
+      }
+    }, [openDrawerParam])
   );
-
-  // Add ProcessingOverlay component
-  const ProcessingOverlay = () => {
-    if (!isProcessing) return null;
-
-    return (
-      <View style={styles.processingOverlay}>
-        <BlurView intensity={20} style={StyleSheet.absoluteFill} />
-        <View style={[styles.processingContainer, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
-          <View style={styles.processingIconContainer}>
-            <Ionicons name="scan" size={48} color={Colors[colorScheme ?? 'light'].tint} />
-            <View style={[styles.processingPulse, { borderColor: Colors[colorScheme ?? 'light'].tint }]} />
-          </View>
-          <Text style={[styles.processingTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
-            Processing Image
-          </Text>
-          <Text style={[styles.processingStep, { color: Colors[colorScheme ?? 'light'].text }]}>
-            {processingSteps[processingStep]}
-          </Text>
-          <View style={styles.progressContainer}>
-            <View 
-              style={[
-                styles.progressBar,
-                { 
-                  backgroundColor: Colors[colorScheme ?? 'light'].tint,
-                  width: `${((processingStep + 1) / processingSteps.length) * 100}%`
-                }
-              ]} 
-            />
-          </View>
-          <View style={styles.processingSteps}>
-            {processingSteps.map((step, index) => (
-              <View 
-                key={index}
-                style={[
-                  styles.processingStepIndicator,
-                  { opacity: index <= processingStep ? 1 : 0.3 }
-                ]}
-              >
-                <Ionicons 
-                  name={index <= processingStep ? "checkmark-circle" : "ellipse-outline"}
-                  size={20}
-                  color={Colors[colorScheme ?? 'light'].tint}
-                />
-                <Text 
-                  style={[
-                    styles.processingStepText,
-                    { 
-                      color: Colors[colorScheme ?? 'light'].text,
-                      opacity: index <= processingStep ? 1 : 0.5
-                    }
-                  ]}
-                >
-                  {step}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      </View>
-    );
-  };
 
   return (
     <View style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
@@ -551,65 +426,16 @@ export default function CaptureScreen() {
       >
         <View style={styles.mainContent}>
           <View style={styles.previewSection}>
-            <View style={[
-              styles.previewContainer,
-              { backgroundColor: Colors[colorScheme ?? 'light'].card }
-            ]}>
+            <View style={styles.previewContainer}>
               {previewUri ? (
-                <View style={styles.previewImageWrapper}>
-                  <Image source={{ uri: previewUri }} style={styles.previewImage} />
-                  <LinearGradient
-                    colors={['rgba(0,0,0,0.3)', 'transparent', 'transparent', 'rgba(0,0,0,0.3)']}
-                    style={styles.previewGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 0, y: 1 }}
-                  />
-                  <View style={styles.previewOverlay}>
-                    <TouchableOpacity 
-                      style={styles.previewAction}
-                      onPress={() => setPreviewUri(null)}
-                    >
-                      <Ionicons name="close-circle" size={28} color="white" />
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={styles.previewAction}
-                      onPress={() => handleCapture()}
-                    >
-                      <Ionicons name="camera" size={28} color="white" />
-                    </TouchableOpacity>
-                  </View>
-                  <View style={styles.previewInfo}>
-                    <BlurView intensity={20} style={styles.previewInfoBlur}>
-                      <Ionicons name="information-circle" size={20} color="white" />
-                      <Text style={styles.previewInfoText}>
-                        Tap to retake or proceed with analysis
-                      </Text>
-                    </BlurView>
-                  </View>
-                </View>
+                <Image source={{ uri: previewUri }} style={styles.previewImage} />
               ) : (
                 <View style={styles.previewPlaceholder}>
-                  <View style={[
-                    styles.previewIconContainer,
-                    { backgroundColor: `${Colors[colorScheme ?? 'light'].tint}20` }
-                  ]}>
-                    <Ionicons 
-                      name="camera" 
-                      size={48} 
-                      color={Colors[colorScheme ?? 'light'].tint} 
-                    />
+                  <View style={styles.previewIconContainer}>
+                    <Ionicons name="camera" size={48} color={Colors[colorScheme ?? 'light'].tint} />
                   </View>
-                  <Text style={[
-                    styles.previewText,
-                    { color: Colors[colorScheme ?? 'light'].text }
-                  ]}>
+                  <Text style={[styles.previewText, { color: Colors[colorScheme ?? 'light'].text }]}>
                     No image selected
-                  </Text>
-                  <Text style={[
-                    styles.previewSubtext,
-                    { color: Colors[colorScheme ?? 'light'].tabIconDefault }
-                  ]}>
-                    Take a photo or choose from gallery
                   </Text>
                 </View>
               )}
@@ -671,7 +497,6 @@ export default function CaptureScreen() {
           </View>
         </View>
       </ScrollView>
-      <ProcessingOverlay />
       <CustomAlert />
       <BottomDrawer />
     </View>
@@ -729,98 +554,45 @@ const styles = StyleSheet.create({
   previewSection: {
     marginTop: -40,
     zIndex: 1,
-    paddingHorizontal: 20,
   },
   previewContainer: {
-    height: 360,
+    height: 300,
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
     borderRadius: 24,
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: 'rgba(59, 130, 246, 0.1)',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 4,
     },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 8,
-  },
-  previewImageWrapper: {
-    width: '100%',
-    height: '100%',
-    position: 'relative',
   },
   previewImage: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
-  },
-  previewGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1,
-  },
-  previewOverlay: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    flexDirection: 'row',
-    gap: 12,
-    zIndex: 2,
-  },
-  previewAction: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  previewInfo: {
-    position: 'absolute',
-    bottom: 16,
-    left: 16,
-    right: 16,
-    zIndex: 2,
-  },
-  previewInfoBlur: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-  },
-  previewInfoText: {
-    color: 'white',
-    fontSize: 14,
-    flex: 1,
+    resizeMode: 'contain',
   },
   previewPlaceholder: {
     alignItems: 'center',
-    gap: 12,
+    gap: 16,
     padding: 32,
   },
   previewIconContainer: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   previewText: {
-    fontSize: 18,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  previewSubtext: {
-    fontSize: 14,
+    fontSize: 16,
     textAlign: 'center',
     opacity: 0.7,
   },
@@ -1031,89 +803,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: 'white',
-  },
-  processingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-    backgroundColor: 'rgba(0,0,0,0.25)',
-  },
-  processingContainer: {
-    width: '85%',
-    maxWidth: 400,
-    borderRadius: 20,
-    padding: 24,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  processingIconContainer: {
-    position: 'relative',
-    width: 80,
-    height: 80,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  processingPulse: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    borderRadius: 40,
-    borderWidth: 2,
-    opacity: 0.5,
-    transform: [{ scale: 1.2 }],
-  },
-  processingTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  processingStep: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 24,
-    opacity: 0.8,
-  },
-  progressContainer: {
-    width: '100%',
-    height: 4,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-    borderRadius: 2,
-    marginBottom: 24,
-    overflow: 'hidden',
-  },
-  progressBar: {
-    height: '100%',
-    borderRadius: 2,
-    transition: 'width 0.3s ease-in-out',
-  },
-  processingSteps: {
-    width: '100%',
-    gap: 12,
-  },
-  processingStepIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    backgroundColor: 'rgba(0,0,0,0.03)',
-    borderRadius: 8,
-  },
-  processingStepText: {
-    fontSize: 14,
   },
 });

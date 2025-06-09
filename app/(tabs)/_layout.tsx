@@ -301,7 +301,10 @@ export default function TabLayout() {
                 <TouchableOpacity
                   style={[styles.captureButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
                   onPress={() => {
-                    router.push('/(tabs)/capture');
+                    router.push({
+                      pathname: '/(tabs)/capture',
+                      params: { openDrawer: 'true' }
+                    });
                   }}
                   disabled={isCapturing}
                 >
