@@ -95,11 +95,11 @@ export default function HomeScreen() {
       onPress: () => router.push('/(tabs)/capture'),
     },
     {
-      title: 'Dilution Calculator',
-      description: 'Calculate required dilutions',
-      icon: 'calculator',
-      gradient: ['#0891B2', '#0EA5E9'] as GradientColors,
-      onPress: () => router.push('/(tabs)/dilution'),
+      title: 'Analysis',
+      description: 'Analyze test results',
+      icon: 'analytics',
+      gradient: ['#DC2626', '#EF4444'] as GradientColors,
+      onPress: () => router.push('/(tabs)/analysis'),
     },
     {
       title: 'History',
@@ -109,11 +109,11 @@ export default function HomeScreen() {
       onPress: () => router.push('/(tabs)/history'),
     },
     {
-      title: 'Analysis',
-      description: 'Analyze test results',
-      icon: 'analytics',
-      gradient: ['#DC2626', '#EF4444'] as GradientColors,
-      onPress: () => router.push('/(tabs)/analysis'),
+      title: 'Settings',
+      description: 'Configure app settings',
+      icon: 'settings',
+      gradient: ['#0891B2', '#0EA5E9'] as GradientColors,
+      onPress: () => router.push('/(tabs)/settings'),
     },
   ];
 
@@ -198,7 +198,7 @@ export default function HomeScreen() {
                     </Text>
                     <View style={styles.testValueContainer}>
                       <Text style={[styles.testValue, { color: colors[colorScheme].text }]}>
-                        {test.concentration.toFixed(3)} mol/dm⁻³
+                        {test.concentration.toFixed(3)} mg/L
                       </Text>
                       <View style={[styles.testStatus, { backgroundColor: test.concentration > 0.5 ? '#EF4444' : '#10B981' }]} />
                     </View>

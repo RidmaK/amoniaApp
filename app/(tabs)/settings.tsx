@@ -44,10 +44,10 @@ export default function SettingsScreen() {
   const isSmallScreen = width < 375;
   const { theme, isDark, setTheme } = useTheme();
   const [user, setUser] = useState<User>({
-    name: 'Dr. Sarah Johnson',
-    email: 'sarah.johnson@lab.com',
-    role: 'Senior Chemist',
-    lab: 'Environmental Analysis Lab',
+    name: 'Ruchini Saumya',
+    email: 'ruchinisaumya@gmail.com',
+    role: 'Chemist',
+    lab: 'Analysis Lab',
   });
   const [settings, setSettings] = useState<Settings>({
     darkMode: colorScheme === 'dark',

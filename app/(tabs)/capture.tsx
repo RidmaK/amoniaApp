@@ -92,6 +92,7 @@ export default function CaptureScreen() {
             style={[
               styles.drawer,
               {
+                backgroundColor: Colors[colorScheme ?? 'light'].background,
                 transform: [{
                   translateY: slideAnim.interpolate({
                     inputRange: [0, 1],
@@ -111,20 +112,25 @@ export default function CaptureScreen() {
                 }}
               >
                 <View style={styles.drawerButtonIcon}>
-                  <Ionicons name="camera" size={20} color="white" />
+                  <Ionicons name="camera" size={24} color="white" />
                 </View>
                 <Text style={styles.drawerButtonText}>Take Photo</Text>
               </TouchableOpacity>
 
               <TouchableOpacity 
-                style={[styles.drawerButton, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}
+                style={[styles.drawerButton, styles.drawerButtonSecondary, { 
+                  backgroundColor: Colors[colorScheme ?? 'light'].card,
+                  borderColor: Colors[colorScheme ?? 'light'].tint + '20'
+                }]}
                 onPress={() => {
                   toggleDrawer();
                   handleGalleryPick();
                 }}
               >
-                <View style={[styles.drawerButtonIcon, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
-                  <Ionicons name="images" size={20} color={Colors[colorScheme ?? 'light'].tint} />
+                <View style={[styles.drawerButtonIcon, { 
+                  backgroundColor: Colors[colorScheme ?? 'light'].tint + '15'
+                }]}>
+                  <Ionicons name="images" size={24} color={Colors[colorScheme ?? 'light'].tint} />
                 </View>
                 <Text style={[styles.drawerButtonText, { color: Colors[colorScheme ?? 'light'].text }]}>
                   Choose from Gallery
@@ -425,24 +431,43 @@ export default function CaptureScreen() {
         bounces={true}
       >
         <View style={styles.mainContent}>
-          <View style={styles.previewSection}>
+          {/* Camera Preview Card */}
+          <View style={[styles.cameraCard, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
             <View style={styles.previewContainer}>
               {previewUri ? (
                 <Image source={{ uri: previewUri }} style={styles.previewImage} />
               ) : (
                 <View style={styles.previewPlaceholder}>
-                  <View style={styles.previewIconContainer}>
-                    <Ionicons name="camera" size={48} color={Colors[colorScheme ?? 'light'].tint} />
+                  <View style={[styles.cameraIconBg, { backgroundColor: Colors[colorScheme ?? 'light'].tint + '10' }]}>
+                    <Ionicons name="camera-outline" size={64} color={Colors[colorScheme ?? 'light'].tint} />
                   </View>
-                  <Text style={[styles.previewText, { color: Colors[colorScheme ?? 'light'].text }]}>
-                    No image selected
+                  <Text style={[styles.placeholderTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
+                    Ready to Capture
+                  </Text>
+                  <Text style={[styles.placeholderSubtitle, { color: Colors[colorScheme ?? 'light'].text + '80' }]}>
+                    Your test sample will appear here
                   </Text>
                 </View>
               )}
             </View>
+            
+            {previewUri && (
+              <View style={styles.previewActions}>
+                <TouchableOpacity 
+                  style={[styles.retakeButton, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}
+                  onPress={() => setPreviewUri(null)}
+                >
+                  <Ionicons name="refresh" size={20} color={Colors[colorScheme ?? 'light'].tint} />
+                  <Text style={[styles.retakeText, { color: Colors[colorScheme ?? 'light'].tint }]}>
+                    Retake
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
-          <View style={styles.actionSection}>
+          {/* Capture Button */}
+          <View style={styles.captureSection}>
             <TouchableOpacity
               style={[styles.captureButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
               onPress={toggleDrawer}
@@ -452,47 +477,75 @@ export default function CaptureScreen() {
                 <ActivityIndicator size="large" color="white" />
               ) : (
                 <>
-                  <View style={styles.buttonIconContainer}>
-                    <Ionicons name="camera" size={28} color="white" />
+                  <View style={styles.captureButtonInner}>
+                    <Ionicons name="camera" size={32} color="white" />
                   </View>
-                  <Text style={styles.buttonText}>Capture</Text>
                 </>
               )}
             </TouchableOpacity>
           </View>
 
-          <View style={[styles.tipsSection, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
-            <View style={styles.tipsHeader}>
-              <Ionicons name="bulb" size={24} color={Colors[colorScheme ?? 'light'].tint} />
-              <Text style={[styles.tipsTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
-                Tips for Best Results
+          {/* Quick Actions */}
+          <View style={styles.quickActions}>
+            <TouchableOpacity 
+              style={[styles.quickActionButton, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}
+              onPress={handleCapture}
+              disabled={isCapturing}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: Colors[colorScheme ?? 'light'].tint + '15' }]}>
+                <Ionicons name="camera" size={24} color={Colors[colorScheme ?? 'light'].tint} />
+              </View>
+              <Text style={[styles.quickActionText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                Camera
               </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.quickActionButton, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}
+              onPress={handleGalleryPick}
+              disabled={isCapturing}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: Colors[colorScheme ?? 'light'].tint + '15' }]}>
+                <Ionicons name="images" size={24} color={Colors[colorScheme ?? 'light'].tint} />
+              </View>
+              <Text style={[styles.quickActionText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                Gallery
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Photography Tips */}
+          <View style={[styles.tipsCard, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
+            <View style={styles.tipsHeader}>
+              <View style={[styles.tipsIconContainer, { backgroundColor: Colors[colorScheme ?? 'light'].tint + '15' }]}>
+                <Ionicons name="bulb" size={24} color={Colors[colorScheme ?? 'light'].tint} />
+              </View>
+              <View style={styles.tipsHeaderText}>
+                <Text style={[styles.tipsTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
+                  Photography Tips
+                </Text>
+                <Text style={[styles.tipsSubtitle, { color: Colors[colorScheme ?? 'light'].text + '80' }]}>
+                  For accurate results
+                </Text>
+              </View>
             </View>
-            <View style={styles.tipsGrid}>
-              <View style={styles.tipCard}>
-                <Ionicons name="sunny" size={24} color={Colors[colorScheme ?? 'light'].tint} />
-                <Text style={[styles.tipText, { color: Colors[colorScheme ?? 'light'].text }]}>
-                  Good lighting conditions
-                </Text>
-              </View>
-              <View style={styles.tipCard}>
-                <Ionicons name="crop" size={24} color={Colors[colorScheme ?? 'light'].tint} />
-                <Text style={[styles.tipText, { color: Colors[colorScheme ?? 'light'].text }]}>
-                  Focus on color area
-                </Text>
-              </View>
-              <View style={styles.tipCard}>
-                <Ionicons name="color-palette" size={24} color={Colors[colorScheme ?? 'light'].tint} />
-                <Text style={[styles.tipText, { color: Colors[colorScheme ?? 'light'].text }]}>
-                  Fill frame with color
-                </Text>
-              </View>
-              <View style={styles.tipCard}>
-                <Ionicons name="grid" size={24} color={Colors[colorScheme ?? 'light'].tint} />
-                <Text style={[styles.tipText, { color: Colors[colorScheme ?? 'light'].text }]}>
-                  Center the sample
-                </Text>
-              </View>
+
+            <View style={styles.tipsList}>
+              {[
+                { icon: 'sunny-outline', text: 'Use bright, even lighting' },
+                { icon: 'scan-outline', text: 'Focus on the test area' },
+                { icon: 'resize-outline', text: 'Fill the frame completely' },
+                { icon: 'eye-outline', text: 'Avoid shadows and glare' }
+              ].map((tip, index) => (
+                <View key={index} style={styles.tipItem}>
+                  <View style={[styles.tipIcon, { backgroundColor: Colors[colorScheme ?? 'light'].tint + '10' }]}>
+                    <Ionicons name={tip.icon as any} size={20} color={Colors[colorScheme ?? 'light'].tint} />
+                  </View>
+                  <Text style={[styles.tipText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                    {tip.text}
+                  </Text>
+                </View>
+              ))}
             </View>
           </View>
         </View>
@@ -506,39 +559,35 @@ export default function CaptureScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    position: 'relative', // Ensure overlay positions correctly
   },
   header: {
-    padding: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    position: 'relative',
-    overflow: 'hidden',
+    padding: 16,
+    paddingTop:  32,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   headerContent: {
-    gap: 8,
-    zIndex: 1,
+    gap: 6,
   },
   headerTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   headerIcon: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    padding: 8,
-    borderRadius: 12,
+    padding: 6,
+    borderRadius: 10,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: 'white',
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: 'rgba(255, 255, 255, 0.9)',
-    marginLeft: 44,
+    marginLeft: 36,
   },
   scrollView: {
     flex: 1,
@@ -548,30 +597,23 @@ const styles = StyleSheet.create({
   },
   mainContent: {
     flex: 1,
-    padding: 20,
-    gap: 24,
+    padding: 16,
+    gap: 16,
   },
-  previewSection: {
-    marginTop: -40,
-    zIndex: 1,
+  cameraCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
   },
   previewContainer: {
-    height: 300,
-    backgroundColor: 'rgba(0, 0, 0, 0.03)',
-    borderRadius: 24,
-    overflow: 'hidden',
+    height: 220,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(59, 130, 246, 0.1)',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.02)',
   },
   previewImage: {
     width: '100%',
@@ -580,98 +622,158 @@ const styles = StyleSheet.create({
   },
   previewPlaceholder: {
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
     padding: 32,
   },
-  previewIconContainer: {
+  cameraIconBg: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 6,
   },
-  previewText: {
-    fontSize: 16,
+  placeholderTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  placeholderSubtitle: {
+    fontSize: 14,
     textAlign: 'center',
-    opacity: 0.7,
+    lineHeight: 20,
   },
-  actionSection: {
-    gap: 16,
+  previewActions: {
+    padding: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.05)',
+    alignItems: 'center',
+    marginTop: 16,
   },
-  captureButton: {
+  retakeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12, // smaller padding
-    borderRadius: 14, // slightly less rounded
-    gap: 10,
-    backgroundColor: '#2563EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.10,
-    shadowRadius: 6,
-    elevation: 4,
-    minHeight: 44,
-    minWidth: 120,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.2)',
   },
-  buttonIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+  retakeText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  captureSection: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  captureButton: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 6,
-  },
-  buttonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    letterSpacing: 0.2,
-    color: 'white',
-  },
-  tipsSection: {
-    borderRadius: 24,
-    padding: 24,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 2,
+    elevation: 6,
+  },
+  captureButtonInner: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  captureButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'white',
+    letterSpacing: 0.3,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'center',
+  },
+  quickActionButton: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  quickActionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quickActionText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  tipsCard: {
+    borderRadius: 16,
+    padding: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   tipsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 20,
+    marginBottom: 16,
+  },
+  tipsIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tipsHeaderText: {
+    flex: 1,
   },
   tipsTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
-    letterSpacing: 0.3,
+    marginBottom: 1,
   },
-  tipsGrid: {
+  tipsSubtitle: {
+    fontSize: 12,
+  },
+  tipsList: {
+    gap: 12,
+  },
+  tipItem: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
-  },
-  tipCard: {
-    flex: 1,
-    minWidth: '45%',
-    backgroundColor: 'rgba(59, 130, 246, 0.05)',
-    borderRadius: 16,
-    padding: 16,
     alignItems: 'center',
     gap: 12,
   },
+  tipIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   tipText: {
-    fontSize: 15,
-    textAlign: 'center',
-    lineHeight: 20,
-    letterSpacing: 0.2,
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 18,
   },
   alertOverlay: {
     position: 'absolute',
@@ -682,7 +784,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
-    backgroundColor: 'rgba(0,0,0,0.25)', // Add dimming effect
+    backgroundColor: 'rgba(0,0,0,0.25)',
   },
   alertBlur: {
     position: 'absolute',
@@ -692,63 +794,52 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   alertContainer: {
-    width: '85%',
-    maxWidth: 400,
-    borderRadius: 20,
-    padding: 24,
+    width: '80%',
+    maxWidth: 350,
+    borderRadius: 16,
+    padding: 20,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 4,
   },
   alertIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: 'rgba(59, 130, 246, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   alertTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   alertMessage: {
-    fontSize: 16,
+    fontSize: 14,
     textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 22,
+    marginBottom: 20,
+    lineHeight: 20,
   },
   alertButton: {
     width: '100%',
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 12,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.05)',
   },
   alertButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
   },
   alertButtonCancel: {
     backgroundColor: 'rgba(0, 0, 0, 0.05)',
-  },
-  alertButtonProceed: {
-    backgroundColor: '#3B82F6',
-  },
-  alertButtonTextProceed: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: 'white',
   },
   drawerOverlay: {
     flex: 1,
@@ -756,52 +847,55 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   drawer: {
-    backgroundColor: 'white',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    paddingTop: 12,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    paddingTop: 10,
+    paddingBottom:  20,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
   },
   drawerHandle: {
-    width: 40,
-    height: 4,
-    backgroundColor: '#E0E0E0',
+    width: 32,
+    height: 3,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
     borderRadius: 2,
     alignSelf: 'center',
     marginBottom: 20,
   },
   drawerContent: {
     paddingHorizontal: 20,
-    gap: 16,
+    gap: 12,
   },
   drawerButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10, // smaller padding
+    padding: 14,
     borderRadius: 12,
-    gap: 10,
-    marginBottom: 4,
-    minHeight: 40,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  drawerButtonSecondary: {
+    borderWidth: 1,
   },
   drawerButtonIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   drawerButtonText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
     color: 'white',
+    flex: 1,
   },
 });
