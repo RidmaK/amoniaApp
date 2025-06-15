@@ -584,6 +584,19 @@ export default function AnalysisScreen() {
       ],
     };
 
+    // Calculate marker position more accurately
+    // Account for chart padding and margins (typical LineChart has ~60px left margin and ~20px right margin)
+    const chartWidth = width - 40; // Total chart container width
+    const chartPaddingLeft = 60; // Approximate left padding for Y-axis labels
+    const chartPaddingRight = 20; // Approximate right padding
+    const plotAreaWidth = chartWidth - chartPaddingLeft - chartPaddingRight; // Actual plot area width
+    
+    // Calculate position as percentage of the plot area, then add the left padding
+    const concentrationRange = maxConc - minConc;
+    const relativePosition = (currentConcentration - minConc) / concentrationRange;
+    const markerLeftPosition = chartPaddingLeft + (relativePosition * plotAreaWidth);
+    const markerLeftPercentage = (markerLeftPosition / chartWidth) * 100;
+
     // Create gradient colors from actual data points
     const numGradientSteps = 8;
     const stepSize = Math.floor(chartData.length / numGradientSteps);
@@ -647,14 +660,12 @@ export default function AnalysisScreen() {
             yAxisInterval={1}
           />
 
-          {/* Current result marker */}
+          {/* Current result marker - Fixed positioning */}
           <View
             style={[
               styles.resultMarker,
               {
-                left: `${
-                  ((currentConcentration - minConc) / (maxConc - minConc)) * 85
-                }%`,
+                left: `${markerLeftPercentage}%`,
                 backgroundColor:
                   result.color?.hex || Colors[colorScheme ?? "light"].tint,
               },
