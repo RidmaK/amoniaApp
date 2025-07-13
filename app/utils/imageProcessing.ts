@@ -85,7 +85,7 @@ export const processImage = async (
     formData.append('brightness', options.brightness.toString());
     formData.append('contrast', options.contrast.toString());
 
-    const response = await fetch('https://test3.xessglobal.net/process-image', {
+    const response = await fetch('https://helpdesk.xessglobal.net/api/process-image', {
       method: 'POST',
       body: formData,
       headers: {

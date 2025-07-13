@@ -57,7 +57,7 @@ export default function HomeScreen() {
   const loadHistory = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('https://test3.xessglobal.net/history');
+      const response = await fetch('https://helpdesk.xessglobal.net/api/history');
       
       if (!response.ok) {
         throw new Error('Failed to load history data');

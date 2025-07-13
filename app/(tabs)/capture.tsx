@@ -218,7 +218,7 @@ export default function CaptureScreen() {
         }
       }
 
-      const response = await fetch('https://test3.xessglobal.net/validate-color', {
+      const response = await fetch('https://helpdesk.xessglobal.net/api/validate-color', {
         method: 'POST',
         body: formData,
         headers: {

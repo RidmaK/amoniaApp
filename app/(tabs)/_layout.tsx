@@ -227,7 +227,7 @@ export default function TabLayout() {
       }
 
       const response = await fetch(
-        "https://test3.xessglobal.net/validate-color",
+        "https://helpdesk.xessglobal.net/api/validate-color",
         {
           method: "POST",
           body: formData,

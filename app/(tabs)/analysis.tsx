@@ -190,7 +190,7 @@ export default function AnalysisScreen() {
   useEffect(() => {
     const checkServerStatus = async () => {
       try {
-        const response = await fetch("https://test3.xessglobal.net/");
+        const response = await fetch("https://helpdesk.xessglobal.net/api/health");
         const isOnline = response.ok;
         setIsServerOnline(isOnline);
         setLastServerCheck(new Date());
@@ -319,7 +319,7 @@ export default function AnalysisScreen() {
 
       console.log("Uploading image to server...");
       const serverResponse = await fetch(
-        "https://test3.xessglobal.net/predict",
+        "https://helpdesk.xessglobal.net/api/predict",
         {
           method: "POST",
           body: formData,
@@ -396,7 +396,7 @@ export default function AnalysisScreen() {
 
       // Test both endpoints
       const [serverResponse, googleResponse] = await Promise.all([
-        fetch("https://test3.xessglobal.net/"),
+        fetch("https://helpdesk.xessglobal.net/api/health"),
         fetch("https://www.google.com"),
       ]);
 

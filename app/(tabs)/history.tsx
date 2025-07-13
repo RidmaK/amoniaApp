@@ -86,7 +86,7 @@ export default function HistoryScreen() {
       setIsLoading(true);
       setError(null);
       
-      const response = await fetch('https://test3.xessglobal.net/history');
+      const response = await fetch('https://helpdesk.xessglobal.net/api/history');
       
       if (!response.ok) {
         throw new Error('Failed to load history data');
